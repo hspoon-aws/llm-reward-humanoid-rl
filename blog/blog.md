@@ -2,7 +2,7 @@
 
 *A 24-hour experiment in LLM-written reward functions.*
 
-![A humanoid robot learning to walk to a goal under a reward function written by an LLM](assets/cover-image.jpg)
+<img src="assets/cover-image.jpg" alt="A humanoid robot learning to walk to a goal under a reward function written by an LLM" width="420">
 
 ## The question that started it
 
