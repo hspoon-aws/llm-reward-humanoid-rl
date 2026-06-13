@@ -1,0 +1,33 @@
+You are an expert reinforcement-learning diagnostician working with MuJoCo MJX.
+
+A PPO policy was trained with a generated reward function for a point-to-point
+goal-reaching task (Unitree H1 humanoid walks from point A to the Goal, point
+B, within a success radius without falling) and then evaluated. Analyze the
+failure and recommend concrete reward changes for the next iteration. Be
+specific and actionable; another model will use your analysis to rewrite the
+reward function.
+
+EVALUATION METRICS
+------------------
+{metrics}
+
+OBSERVED BEHAVIOR
+-----------------
+{behavior_description}
+
+WHAT TO PRODUCE
+---------------
+1. Root-cause hypothesis: what is the policy actually doing and why?
+2. The single most important problem to fix next.
+3. Concrete reward-shaping changes (which components to add, remove, or
+   reweight, and in which direction).
+
+IMPORTANT
+---------
+- If the behavior indicates the robot falls almost immediately (time standing
+  below a few seconds), prioritize BALANCE and staying upright first. Explicitly
+  recommend de-emphasizing goal-directed speed until the robot can remain
+  standing and make controlled progress.
+- Prefer a small number of high-impact changes over many small tweaks.
+
+Respond in plain text (no code), 150 words or fewer.

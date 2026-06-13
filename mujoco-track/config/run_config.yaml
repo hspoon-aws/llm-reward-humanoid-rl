@@ -1,0 +1,81 @@
+# Run configuration for the humanoid goal-reaching LLM+RL loop — MuJoCo MJX track.
+# Mirrors the Isaac project's run_config.yaml; only the simulator/RL fields differ.
+# Task framing: point-A-to-point-B goal-reaching (NOT velocity/gait tracking).
+
+# --- project ------------------------------------------------------------- #
+project_tag: "humanoid-mujoco-poc"
+
+# --- orchestration loop --------------------------------------------------- #
+max_iterations: 12
+selection_metric: success_rate
+
+# --- language model (Qwen_Client) ----------------------------------------- #
+# Per-box vLLM on this B200 (GPU 0), loopback-only. Bedrock backup is selectable
+# (see ../docs/lesson-self-host-vllm-vs-bedrock.md in the Isaac project).
+llm:
+  endpoint: "http://127.0.0.1:8000/v1"
+  model: "Qwen3-Coder-30B-A3B-Instruct"
+  max_retries: 3
+  retry_backoff_s: 2.0
+  request_timeout_s: 120.0
+  temperature: 0.4
+  max_tokens: 4096
+  prompts_dir: "prompts"
+
+# --- goal-reaching task (Goal + Success_Radius) --------------------------- #
+goal:
+  goal_position: [5.0, 0.0]
+  success_radius_m: 0.5
+
+# --- reward sandbox (Reward_Executor) ------------------------------------- #
+sandbox:
+  time_limit_s: 5.0
+  max_invalid_retries: 3
+
+# --- training (MJX + Brax PPO) -------------------------------------------- #
+training:
+  env_name: "H1JoystickGaitTracking"   # Playground registry id; G1JoystickFlatTerrain is the fallback
+  llm_gpu: 0                            # reserved for vLLM; JAX pinned off it
+  training_gpus: [1, 2, 3, 4, 5, 6, 7]  # MJX may saturate one GPU — measure (comparison metric)
+  num_envs: 4096                        # vmap'd batch; Brax PPO num_envs
+  oom_fallback_num_envs: 2048
+  epochs: 1500
+  checkpoint_interval: 500
+  learning_rate: 1.0e-3
+  lr_reduction_factor: 0.5
+  # JAX preallocates GPU memory; cap it so vLLM keeps GPU 0 headroom.
+  xla_python_client_mem_fraction: 0.6
+
+# --- evaluation: goal-reaching metrics + staged gates --------------------- #
+evaluation:
+  episodes: 8
+  fall_threshold_s: 3.0
+  min_progress_distance_m: 1.0
+  time_to_goal_threshold_s: 12.0
+  path_efficiency_threshold: 0.6
+  secondary_metrics_enabled: true
+
+# --- artifact persistence (S3_Store) -------------------------------------- #
+s3:
+  bucket: "humanoid-from-scratch-123456789012"
+  prefix: "runs-mujoco"                 # distinct prefix so the two tracks don't collide
+  region: "us-west-2"
+
+# --- training-media capture ----------------------------------------------- #
+capture:
+  capture_interval_epochs: 100
+  width: 1280
+  height: 720
+  env_subset_size: 4
+
+# --- learning blog -------------------------------------------------------- #
+blog:
+  output_location: "runs-mujoco"
+  output_format: "markdown"
+  llm_narrative_enabled: true
+
+# --- demo video (headless MuJoCo Renderer, EGL — verify on B200) ---------- #
+video:
+  width: 1920
+  height: 1080
+  fps: 30

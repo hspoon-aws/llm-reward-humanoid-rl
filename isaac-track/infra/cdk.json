@@ -1,0 +1,30 @@
+{
+  "app": "python3 app.py",
+  "watch": {
+    "include": ["**"],
+    "exclude": ["README.md", "cdk*.json", "**/__pycache__", "**/*.pyc"]
+  },
+  "context": {
+    "@aws-cdk/aws-iam:minimizePolicies": true,
+    "@aws-cdk/core:checkSecretUsage": true,
+    "@aws-cdk/aws-ec2:launchTemplateDefaultUserData": true,
+
+    "project_tag": "humanoid-llm-rl-poc",
+    "bucket_name": "humanoid-from-scratch-123456789012",
+    "region": "us-west-2",
+    "az": "us-west-2b",
+    "vpc_cidr": "10.20.0.0/16",
+
+    "instance_type": "p6-b200.48xlarge",
+    "capacity_reservation_id": "cr-EXAMPLE000000000",
+    "ami_id": "ami-EXAMPLE0000000000",
+
+    "weights_snapshot_id": "snap-EXAMPLE00000000",
+    "weights_device": "/dev/sdf",
+    "root_volume_gb": 500,
+    "weights_volume_type": "gp3",
+
+    "model_dir": "/opt/dlami/nvme/qwen3-coder-30b",
+    "use_nat_gateway": true
+  }
+}

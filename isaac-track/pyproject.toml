@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "YOUR_REPO"
+version = "0.1.0"
+description = "Eureka-style LLM -> Reward -> RL loop teaching a Unitree H1 humanoid point-to-point goal-reaching."
+requires-python = ">=3.10"
+# Runtime deps are environment-specific (Isaac Lab / torch / RSL-RL live on the
+# GPU host); the controller-side runtime dep is kept minimal here.
+dependencies = [
+    "requests",
+    "pyyaml",
+    "boto3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "hypothesis>=6",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-q"
+# A "ci" Hypothesis profile (>=100 examples, per the spec's PBT convention) is
+# registered in the root conftest.py and selected via HYPOTHESIS_PROFILE.

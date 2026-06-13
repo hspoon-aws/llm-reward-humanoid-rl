@@ -1,0 +1,35 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListProjectBucket",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": "arn:aws:s3:::humanoid-from-scratch-123456789012"
+    },
+    {
+      "Sid": "ReadModelWeights",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::humanoid-from-scratch-123456789012/models/*"
+    },
+    {
+      "Sid": "WriteRunArtifacts",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts"],
+      "Resource": "arn:aws:s3:::humanoid-from-scratch-123456789012/runs/*"
+    },
+    {
+      "Sid": "TagProjectBucket",
+      "Effect": "Allow",
+      "Action": ["s3:PutBucketTagging", "s3:GetBucketTagging"],
+      "Resource": "arn:aws:s3:::humanoid-from-scratch-123456789012"
+    },
+    {
+      "Sid": "DescribeAndTagProjectResources",
+      "Effect": "Allow",
+      "Action": ["ec2:DescribeVolumes", "ec2:CreateTags"],
+      "Resource": "*"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+# Run configuration for the humanoid-locomotion LLM+RL loop (spec Req 18).
+# All tunable parameters live here so a run can be adjusted without editing
+# code. Values are validated at startup; bad values must abort before the
+# GPU sprint begins (Req 18.4).
+#
+# Task framing: point-A-to-point-B goal-reaching (NOT velocity/locomotion).
+# The robot starts at the env origin (point A) and must reach goal_position
+# (point B) within success_radius_m while staying upright.
+
+# --- project ------------------------------------------------------------- #
+project_tag: "humanoid-llm-rl-poc"   # applied to all AWS resources/artifacts created by the run
+
+# --- orchestration loop --------------------------------------------------- #
+max_iterations: 12              # stop after this many full iterations (Req 7.4)
+# Metric used to pick Best_Policy (Req 19.1); must be a field of EvalMetrics.
+# success_rate is the goal-reaching objective; ties broken deterministically.
+selection_metric: success_rate
+
+# --- language model (Qwen_Client) ----------------------------------------- #
+llm:
+  endpoint: "http://127.0.0.1:8000/v1"   # loopback-only (Req 22.3); never exposed via SG
+  model: "Qwen3-Coder-30B-A3B-Instruct"
+  max_retries: 6               # transient request retries before erroring (Req 1.5); bumped for shared vllm.lock contention
+  retry_backoff_s: 3.0
+  request_timeout_s: 180.0
+  temperature: 0.4
+  max_tokens: 4096
+  prompts_dir: "prompts"
+
+# --- goal-reaching task (Goal + Success_Radius) --------------------------- #
+goal:
+  goal_position: [5.0, 0.0]    # point B (x, y) on the ground plane, meters (Req 18.2)
+  success_radius_m: 0.5        # episode succeeds when base is within this of goal (Req 9.2)
+
+# --- reward sandbox (Reward_Executor) ------------------------------------- #
+sandbox:
+  time_limit_s: 5.0            # per-call execution bound for generated code (Req 5.2)
+  max_invalid_retries: 3       # re-prompts on invalid code per iteration (Req 12.2)
+
+# --- training (PPO_Runner) ------------------------------------------------ #
+training:
+  task: "Isaac-Velocity-Flat-H1-v0"
+  llm_gpu: 0                   # reserved for vLLM; must NOT appear below (Req 18.5)
+  training_gpus: [1, 2, 3, 4, 5, 6, 7]
+  num_envs: 4096
+  oom_fallback_num_envs: 2048  # retry env count on GPU OOM (Req 15.1)
+  num_steps_per_env: 24        # PPO rollout horizon per env per epoch (env-step budget multiplier)
+  # Env-steps per Eureka iteration = num_envs × num_steps_per_env × epochs.
+  # 4096 × 24 × 1500 ≈ 147M — within the published Isaac/RSL-RL H1 convergence
+  # band (~50-200M). This is the full 8-GPU sprint budget; the single-GPU g6
+  # profile (run_config.g6.yaml) uses a smaller search budget. Always sanity-check
+  # this product against the task's known convergence budget before a long run.
+  epochs: 1500
+  checkpoint_interval: 500     # (Req 8.4)
+  learning_rate: 1.0e-3
+  lr_reduction_factor: 0.5     # applied when reverting after divergence (Req 14.2)
+
+# --- evaluation: goal-reaching metrics + staged gates (Evaluator) --------- #
+evaluation:
+  episodes: 8                  # eval episodes; best & worst get recorded (Req 10.1)
+  fall_threshold_s: 3.0        # upright time below this -> balance-first guidance (Req 13.1)
+  # staged goal gates (Req 17) — thresholds sourced from here (Req 17.4)
+  min_progress_distance_m: 1.0       # makes-progress gate: net displacement toward goal (Req 17.1)
+  time_to_goal_threshold_s: 12.0     # efficient-goal gate: max time-to-goal (Req 17.3)
+  path_efficiency_threshold: 0.6     # efficient-goal gate: straight-line / actual path (Req 17.3)
+  secondary_metrics_enabled: true    # avg speed, energy eff, gait smoothness/symmetry (Req 9.6)
+
+# --- artifact persistence (S3_Store) -------------------------------------- #
+s3:
+  bucket: "humanoid-from-scratch-123456789012"
+  prefix: "runs"              # s3://<bucket>/<prefix>/<run-id>/iteration-NN/ (Req 11.2)
+  region: "us-west-2"
+
+# --- training-media capture (Req 20) -------------------------------------- #
+capture:
+  capture_interval_epochs: 100   # cadence of Training_Captures during training (Req 20.1)
+  width: 1280                    # capture resolution (Req 18.6, 20.3)
+  height: 720
+  env_subset_size: 4             # # parallel envs rendered per capture; keep small (Req 20.3, 20.5)
+
+# --- learning blog (Req 21) ----------------------------------------------- #
+blog:
+  output_location: "runs"        # s3 prefix for assembled Blog + assets (Req 18.6, 21.3)
+  output_format: "markdown"      # Blog output format (Req 18.6)
+  llm_narrative_enabled: true    # draft narrative sections via Qwen_Client (Req 21.4)
+
+# --- demo video cameras (Camera_Config, eval-only) ------------------------ #
+video:
+  width: 1920
+  height: 1080
+  fps: 30

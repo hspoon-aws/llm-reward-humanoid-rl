@@ -1,0 +1,120 @@
+You are an expert reinforcement-learning reward engineer working with NVIDIA Isaac Lab.
+
+TASK
+----
+{task_description}
+
+GOAL
+----
+{goal_description}
+
+ENVIRONMENT
+-----------
+Isaac Lab task: Isaac-Velocity-Flat-H1-v0 (manager-based), reframed
+for point-to-point goal-reaching on flat terrain.
+Robot: Unitree H1 humanoid, 19 DOF (joint position targets).
+This is a point-A-to-point-B task: the robot starts at the origin (point A)
+and must walk to a target position (point B, the Goal) and arrive within the
+success radius while staying upright and moving efficiently.
+
+There is NO camera and NO image/visual modality. The reward operates on
+environment state only.
+
+Observation space (~69-dim proprioceptive, goal-conditioned) layout:
+{obs_space}
+
+Your job is to write a single Python reward function that maps per-step
+environment state to a scalar reward and a dictionary of named reward
+components. The function runs for thousands of parallel environments at once,
+so it MUST be fully vectorized with PyTorch tensors (no Python loops over
+environments).
+
+REWARD MAY READ FROM `env` (full environment state). Use these EXACT accessors
+(Isaac Lab manager-based H1 conventions) — do NOT invent attribute names:
+
+  robot = env.scene["robot"]
+  robot.data.root_pos_w      # (num_envs, 3) base position in world frame (x, y, z)
+  env.scene.env_origins      # (num_envs, 3) per-env grid origin in world frame
+  robot.data.root_quat_w     # (num_envs, 4) base orientation quaternion (w, x, y, z)
+  robot.data.root_lin_vel_b  # (num_envs, 3) base linear velocity, base frame
+  robot.data.root_ang_vel_b  # (num_envs, 3) base angular velocity, base frame
+  robot.data.joint_pos       # (num_envs, 19) joint positions
+  robot.data.joint_vel       # (num_envs, 19) joint velocities
+  robot.data.applied_torque  # (num_envs, 19) applied joint torques
+  env.scene["contact_forces"].data.net_forces_w  # (num_envs, num_bodies, 3) contact forces
+
+  # The Goal (point B) is published on the env by the reward wrapper:
+  env.goal.position_xy       # tuple/tensor (x, y): target on the ground plane
+  env.goal.success_radius_m  # float: arrival radius
+
+Notes:
+- CRITICAL — env-local frame. ``root_pos_w`` is the ABSOLUTE world position;
+  Isaac Lab spaces the parallel envs on a grid, so it includes each env's grid
+  origin offset (``env.scene.env_origins``, tens of metres for most envs). The
+  Goal (``env.goal.position_xy``) is ENV-LOCAL. You MUST localize before any
+  distance/direction-to-goal computation:
+      pos_local = robot.data.root_pos_w[:, :2] - env.scene.env_origins[:, :2]
+      to_goal   = goal_xy - pos_local
+  Using raw ``root_pos_w`` against the local goal makes distance read as the
+  ~30 m env offset and the whole goal signal wrong.
+- Prefer reading kinematic quantities (base lin/ang velocity, joint pos/vel)
+  straight from `obs` using the index layout above — it is the cheapest and
+  always-present source. Use the `env` accessors for things NOT in `obs`
+  (world-frame base position for distance-to-goal, torques, contact forces).
+- If an accessor might be absent, guard with getattr(...) and fall back, but do
+  not invent new names.
+
+HARD REQUIREMENTS
+-----------------
+1. Define exactly one function with this signature:
+
+   def compute_reward(env, obs, actions):
+       # env:     the Isaac Lab ManagerBasedRLEnv instance (read Goal + state here)
+       # obs:     torch.Tensor of shape (num_envs, obs_dim)
+       # actions: torch.Tensor of shape (num_envs, 19)
+       # returns: (reward, components)
+       #   reward     -> torch.Tensor of shape (num_envs,)
+       #   components -> dict[str, torch.Tensor], each shape (num_envs,)
+       ...
+       return reward, components
+
+2. Use only torch operations. Do NOT import anything except torch.
+3. Do NOT read or write files, access the network, or call os/sys/eval/exec.
+4. Do NOT reference any camera, image, or pixel input — there is none.
+5. Every reward component MUST be returned in the `components` dict so it can
+   be logged. The scalar `reward` MUST equal the sum of the components.
+6. Keep all tensor math on the same device/dtype as `obs`.
+7. Return finite values only — clamp or guard against NaN/Inf.
+
+GUIDANCE
+--------
+- This is the FIRST attempt. Start simple and physically grounded.
+- The objective is reaching the Goal. A strong starting point rewards
+  reducing the distance to the Goal (progress) and arriving within the
+  success radius, while keeping the robot upright so it does not fall on the
+  way. A robot that falls makes no progress, so include an upright/posture
+  term and an alive bonus.
+- Reasonable starting components: a goal-distance / progress-toward-goal term,
+  an arrival bonus near the Goal, an upright/posture term, an alive bonus, and
+  small penalties on action magnitude and joint velocity for smoothness.
+- FACE THE GOAL — natural forward walking. A humanoid must walk FORWARD toward
+  the Goal, facing its direction of travel; it must NOT walk backward or
+  sideways. Distance-only rewards are gamed by backward shuffling, so you MUST
+  include a heading/facing term: reward alignment between the robot's forward
+  (+x base) axis and the direction to the Goal, and reward forward base
+  velocity (root_lin_vel_b[:, 0] > 0) toward the Goal while penalizing negative
+  (backward) and large lateral base velocity. Derive the robot's yaw from
+  root_quat_w (w,x,y,z) and the goal bearing from (goal_xy - pos_xy); the
+  facing term should be maximal when the robot points at the Goal and walks
+  forward into it.
+
+OUTPUT FORMAT
+-------------
+Respond with a short explanation, then the function inside a single Python
+code block:
+
+```python
+def compute_reward(env, obs, actions):
+    ...
+    return reward, components
+```

@@ -1,0 +1,102 @@
+# Run config v4 — 6-GPU, Bedrock Opus 4.8 + WARM-START (fine-tune across iters).
+#
+# The decisive change over v3: warm_start=true. Each iteration now SEEDS PPO
+# from the best policy found so far (Brax restore_params) instead of random
+# init, so a standing-capable policy from iteration 0 is FINE-TUNED by later
+# iterations' rewards rather than thrown away. v3 showed upright_time bouncing
+# (0.72 -> 0.47) because every iteration relearned balance from scratch; warm
+# start is the fix so balance, once learned, persists and accumulates.
+#
+# Carries over from v3: Bedrock Opus 4.8 LLM, alive-dominant standing_reward,
+# fall termination, tuned PPO (3e-4 / 8190 envs), closer goal (2 m).
+#
+# NOTE on warm-start + changing rewards: each iteration's reward differs (LLM
+# refinement), so fine-tuning the prior policy on a new reward can occasionally
+# pull it out of a good basin. We accept this for the demo goal of "keep balance
+# once learned"; the normalizer/obs stats are safely reused (env + obs identical
+# across iterations, fixed network architecture).
+
+# --- project ------------------------------------------------------------- #
+project_tag: "humanoid-mujoco-poc-v4-warmstart"
+
+# --- orchestration loop --------------------------------------------------- #
+max_iterations: 10
+selection_metric: success_rate
+
+# --- language model: Amazon Bedrock Claude Opus 4.8 ----------------------- #
+llm:
+  provider: "bedrock"
+  model: "us.anthropic.claude-opus-4-8"
+  region: "us-west-2"
+  max_retries: 6
+  retry_backoff_s: 3.0
+  request_timeout_s: 180.0
+  temperature: 0.4
+  max_tokens: 4096
+  prompts_dir: "prompts"
+  endpoint: "http://127.0.0.1:8000/v1"   # unused for bedrock; loader requires it
+
+# --- goal-reaching task --------------------------------------------------- #
+goal:
+  goal_position: [2.0, 0.0]
+  success_radius_m: 0.75
+
+# --- reward sandbox ------------------------------------------------------- #
+sandbox:
+  time_limit_s: 5.0
+  max_invalid_retries: 3
+
+# --- training (MJX + Brax PPO) -------------------------------------------- #
+training:
+  env_name: "H1JoystickGaitTracking"
+  # vLLM was shut down to reclaim GPU 0 — this run uses the Bedrock managed LLM,
+  # so ALL 8 GPUs (0-7) are free for MuJoCo training. num_envs must be divisible
+  # by device_count (8): 8192 = 8 * 1024.
+  training_gpus: [0, 1, 2, 3, 4, 5, 6, 7]
+  num_envs: 8192                         # 8 * 1024
+  oom_fallback_num_envs: 4096            # 8 * 512
+  epochs: 40
+  episode_length: 1000
+  num_evals: 15
+  learning_rate: 3.0e-4
+  lr_reduction_factor: 0.5
+  xla_python_client_mem_fraction: 0.7
+  # balance shaping (alive dominates) + warm-start (the v4 change)
+  fall_terminate: true
+  fall_height_m: 0.6
+  standing_reward: 4.0
+  warm_start: true                       # fine-tune each iter from best policy so far
+
+# --- evaluation ----------------------------------------------------------- #
+evaluation:
+  episodes: 8
+  fall_threshold_s: 3.0
+  min_progress_distance_m: 1.0
+  time_to_goal_threshold_s: 12.0
+  path_efficiency_threshold: 0.6
+  secondary_metrics_enabled: true
+
+# --- artifact persistence ------------------------------------------------- #
+s3:
+  bucket: "humanoid-from-scratch-123456789012"
+  prefix: "runs-mujoco"
+  region: "us-west-2"
+
+# --- training-media capture ----------------------------------------------- #
+capture:
+  capture_interval_epochs: 100
+  width: 1280
+  height: 720
+  env_subset_size: 4
+
+# --- learning blog -------------------------------------------------------- #
+blog:
+  output_location: "runs-mujoco"
+  output_format: "markdown"
+  llm_narrative_enabled: true
+
+# --- demo video ----------------------------------------------------------- #
+video:
+  width: 1920
+  height: 1080
+  fps: 30

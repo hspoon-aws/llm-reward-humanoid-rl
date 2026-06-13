@@ -1,0 +1,9 @@
+# Development / test dependencies for the controller-side (no-GPU) test suite.
+# Install with:  python3 -m pip install -r requirements-dev.txt
+#
+# Runtime GPU-host dependencies (Isaac Lab, torch, RSL-RL, boto3, vLLM) are
+# provisioned separately on the capacity-block instance and are intentionally
+# not listed here.
+pytest>=7
+hypothesis>=6
+requests

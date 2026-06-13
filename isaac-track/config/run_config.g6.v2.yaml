@@ -1,0 +1,94 @@
+# Run config v2 for the SINGLE-GPU g6/L4 Isaac host — tuned for FAST demo
+# convergence (overfitting to this one fixed goal is acceptable; demo, not
+# generalization). Mirrors the MuJoCo-side run_config_6gpu_v2.yaml tuning where
+# it applies to Isaac.
+#
+# What changed vs run_config.g6.yaml and WHY:
+#   * learning_rate 1e-3 -> 3e-4  -- the trainer previously hard-coded 1e-3 and
+#     never read it from yaml (now fixed in config.py + ppo_runner.py). 3e-4 is
+#     the Playground/RSL-RL-tuned value; 1e-3 tends to oscillate (peak then
+#     collapse). This is the single most-impactful knob now that it is loadable.
+#   * goal 5 m -> 2 m, success_radius 0.5 -> 0.75  -- a closer, slightly more
+#     forgiving target so success_rate can become non-zero early and give the
+#     reward-refinement loop a real gradient to improve against.
+#
+# What we deliberately did NOT copy from the MuJoCo v2 config, and why:
+#   * fall_terminate / fall_height_m: NOT NEEDED on Isaac. The stock H1 task
+#     already terminates the episode on torso/base contact (the live run shows
+#     `Episode_Termination/base_contact` firing and the policy learning to stay
+#     upright), so Isaac never had MuJoCo's "fall toward the goal" reward hack
+#     that fall-termination was invented to kill.
+#   * standing_reward: NOT added. In this Eureka design the LLM-generated reward
+#     OWNS the objective (the stock velocity-tracking terms are zeroed). A
+#     hard-coded standing floor would compete with the generated reward and
+#     undermine the reward-search premise. If staying upright needs more weight,
+#     that belongs in the generated reward / its prompt, not a fixed term.
+#   * num_envs bump to ~8190: that was a 6-GPU variance fix; this host has one
+#     L4 (24 GB) which already caps at 1024 envs.
+
+project_tag: "humanoid-llm-rl-poc-v2"
+
+max_iterations: 12
+selection_metric: success_rate
+
+# --- language model: CROSS-HOST vLLM on the B200 over the VPC ------------- #
+llm:
+  endpoint: "http://10.20.20.70:8000/v1"
+  model: "Qwen3-Coder-30B-A3B-Instruct"
+  max_retries: 6
+  retry_backoff_s: 3.0
+  request_timeout_s: 180.0
+  temperature: 0.4
+  max_tokens: 4096
+  prompts_dir: "prompts"
+
+# Closer goal + larger radius so success_rate is non-zero early (v1 used 5m/0.5).
+goal:
+  goal_position: [2.0, 0.0]
+  success_radius_m: 0.75
+
+sandbox:
+  time_limit_s: 5.0
+  max_invalid_retries: 3
+
+# --- training: single L4 (device 0), scaled-down env count ---------------- #
+training:
+  task: "Isaac-Velocity-Flat-H1-v0"
+  llm_gpu: 0                   # informational; not reserved here (LLM is cross-host)
+  training_gpus: [0]           # the L4 is the only device; GPU 0 allowed (cross-host LLM)
+  num_envs: 1024               # L4 (24 GB) headroom
+  oom_fallback_num_envs: 512
+  num_steps_per_env: 24        # PPO rollout horizon (budget multiplier)
+  epochs: 600                  # search-phase budget (~15M steps/iter on 1024 envs)
+  checkpoint_interval: 200     # <= epochs so mid-iteration checkpoints fire
+  learning_rate: 3.0e-4        # tuned; now actually loaded (was hard-coded 1e-3)
+  lr_reduction_factor: 0.5
+
+evaluation:
+  episodes: 8
+  fall_threshold_s: 3.0
+  min_progress_distance_m: 1.0
+  time_to_goal_threshold_s: 12.0
+  path_efficiency_threshold: 0.6
+  secondary_metrics_enabled: true
+
+s3:
+  bucket: "humanoid-from-scratch-123456789012"
+  prefix: "runs"
+  region: "us-west-2"
+
+capture:
+  capture_interval_epochs: 100
+  width: 1280
+  height: 720
+  env_subset_size: 4
+
+blog:
+  output_location: "runs"
+  output_format: "markdown"
+  llm_narrative_enabled: true
+
+video:
+  width: 1920
+  height: 1080
+  fps: 30

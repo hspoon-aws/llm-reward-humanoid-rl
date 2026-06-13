@@ -1,0 +1,103 @@
+# Run config v2 — 6-GPU, tuned for FAST convergence in a controlled demo.
+# Overfitting to this single fixed goal is acceptable (demo, not generalization).
+#
+# What changed vs run_config_6gpu.yaml and WHY (see
+# docs/lesson-run-v4-findings-and-next-run-plan.md):
+#   * fall_terminate: true + standing_reward      -> the v4 run's robot fell in
+#     ~0.4 s every episode and learned to "fall toward the goal" because the base
+#     gait-tracking env never ends on a fall. Terminating on fall removes that
+#     post-fall reward stream; the standing floor positively reinforces staying up.
+#   * learning_rate 1e-3 -> 3e-4                   -> Playground-tuned value; the
+#     1e-3 caused the oscillating/peak-then-collapse eval_reward curves.
+#   * num_envs 3072 -> 8190                         -> near the Playground default
+#     of 8192 for lower gradient variance (6 GPUs have headroom). Brax requires
+#     num_envs % device_count == 0; device_count = 6, so 8190 = 6 * 1365 is used
+#     (8192 is not divisible by 6).
+#   * goal 5 m -> 2 m, success_radius 0.5 -> 0.75  -> a closer, slightly more
+#     forgiving target so success_rate can become non-zero and give the
+#     reward-refinement loop a real gradient to improve against.
+#   * episode_length explicit; num_evals 10 -> 15  -> finer progress curves.
+
+# --- project ------------------------------------------------------------- #
+project_tag: "humanoid-mujoco-poc-v2"
+
+# --- orchestration loop --------------------------------------------------- #
+max_iterations: 10
+selection_metric: success_rate
+
+# --- language model (Qwen_Client) ----------------------------------------- #
+llm:
+  endpoint: "http://127.0.0.1:8000/v1"
+  model: "Qwen3-Coder-30B-A3B-Instruct"
+  max_retries: 6
+  retry_backoff_s: 3.0
+  request_timeout_s: 180.0
+  temperature: 0.4
+  max_tokens: 4096
+  prompts_dir: "prompts"
+
+# --- goal-reaching task (Goal + Success_Radius) --------------------------- #
+# Closer goal + slightly larger radius so the loop gets a non-zero success
+# signal early (the v4 run was a flat 0.0 success_rate -> nothing to refine on).
+goal:
+  goal_position: [2.0, 0.0]
+  success_radius_m: 0.75
+
+# --- reward sandbox (Reward_Executor) ------------------------------------- #
+sandbox:
+  time_limit_s: 5.0
+  max_invalid_retries: 3
+
+# --- training (MJX + Brax PPO) -------------------------------------------- #
+training:
+  env_name: "H1JoystickGaitTracking"
+  llm_gpu: 0
+  training_gpus: [2, 3, 4, 5, 6, 7]     # GPU 0 = vLLM; GPU 1 = the live 1-GPU A/B run
+  # Brax requires num_envs % device_count == 0. device_count = 6 here, so use a
+  # multiple of 6 close to the Playground default (8192). 8190 = 6 * 1365.
+  num_envs: 8190
+  oom_fallback_num_envs: 4092          # 6 * 682
+  epochs: 40                            # 40*1000*8190 = 327.6M steps/iter (ample/reward)
+  episode_length: 1000
+  num_evals: 15
+  learning_rate: 3.0e-4                 # Playground-tuned; stable
+  lr_reduction_factor: 0.5
+  xla_python_client_mem_fraction: 0.7
+  # --- balance-before-locomotion shaping (the key v4 fix) --- #
+  fall_terminate: true                  # end episode the instant the torso drops
+  fall_height_m: 0.6                    # H1 pelvis stands ~1.0 m; <0.6 = fallen
+  standing_reward: 0.5                  # per-step floor for staying upright
+
+# --- evaluation: goal-reaching metrics + staged gates --------------------- #
+evaluation:
+  episodes: 8
+  fall_threshold_s: 3.0
+  min_progress_distance_m: 1.0
+  time_to_goal_threshold_s: 12.0
+  path_efficiency_threshold: 0.6
+  secondary_metrics_enabled: true
+
+# --- artifact persistence (S3_Store) -------------------------------------- #
+s3:
+  bucket: "humanoid-from-scratch-123456789012"
+  prefix: "runs-mujoco"
+  region: "us-west-2"
+
+# --- training-media capture ----------------------------------------------- #
+capture:
+  capture_interval_epochs: 100
+  width: 1280
+  height: 720
+  env_subset_size: 4
+
+# --- learning blog -------------------------------------------------------- #
+blog:
+  output_location: "runs-mujoco"
+  output_format: "markdown"
+  llm_narrative_enabled: true
+
+# --- demo video (headless MuJoCo Renderer, EGL) --------------------------- #
+video:
+  width: 1920
+  height: 1080
+  fps: 30

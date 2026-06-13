@@ -1,0 +1,86 @@
+# Run config for the SINGLE-GPU g6/L4 Isaac host (Phase 2 smoke + first run).
+#
+# Differs from run_config.yaml (the 8-GPU B200 layout) in two ways that the
+# single-GPU g6 requires:
+#   1. llm.endpoint is CROSS-HOST (the vLLM on the B200, reached over the VPC).
+#      Because the LLM is not co-resident, GPU 0 is free for training and the
+#      loader's Req-18.5 GPU-0 exclusion is relaxed for non-loopback endpoints.
+#   2. training_gpus = [0] — the L4 is the only device on this host.
+#
+# num_envs is also scaled down: an L4 (24 GB) cannot hold 4096 H1 envs. This is
+# the smoke/first-run profile, not the full sprint.
+
+project_tag: "humanoid-llm-rl-poc"
+
+max_iterations: 12
+selection_metric: success_rate
+
+# --- language model: CROSS-HOST vLLM on the B200 over the VPC ------------- #
+llm:
+  endpoint: "http://10.20.20.70:8000/v1"   # B200 private IP; SG allows :8000 intra-VPC only
+  model: "Qwen3-Coder-30B-A3B-Instruct"
+  max_retries: 6               # bumped: cross-host vLLM under shared vllm.lock contention
+  retry_backoff_s: 3.0
+  request_timeout_s: 180.0
+  temperature: 0.4
+  max_tokens: 4096
+  prompts_dir: "prompts"
+
+goal:
+  goal_position: [5.0, 0.0]
+  success_radius_m: 0.5
+
+sandbox:
+  time_limit_s: 5.0
+  max_invalid_retries: 3
+
+# --- training: single L4 (device 0), scaled-down env count ---------------- #
+# Budget note (the mujoco "epochs landmine" lesson applied): total env-steps per
+# Eureka iteration = num_envs × num_steps_per_env × epochs. Published Isaac/RSL-RL
+# H1 locomotion converges in ~50-200M steps. On one L4 at 1024 envs, a SEARCH-phase
+# budget that gives a differentiated learning signal cheaply (so the loop can do
+# many reward-refinement iterations) is preferred over over-training one reward:
+#   1024 × 24 × 600 ≈ 15M steps/iter  (search; ranks rewards, ~tens of min on L4)
+# The winning reward gets a longer FINAL train separately. The full 8-GPU sprint
+# (run_config.yaml) uses epochs=1500 → 4096×24×1500 ≈ 147M (the real convergence
+# budget). Do NOT copy 1500 here — on one L4 it is both slow and below the floor.
+training:
+  task: "Isaac-Velocity-Flat-H1-v0"
+  llm_gpu: 0                   # informational; not reserved here (LLM is cross-host)
+  training_gpus: [0]           # the L4 is the only device; GPU 0 allowed (cross-host LLM)
+  num_envs: 1024               # L4 (24 GB) headroom; full sprint would use far more
+  oom_fallback_num_envs: 512
+  num_steps_per_env: 24        # PPO rollout horizon (surfaced from code; budget multiplier)
+  epochs: 600                  # search-phase budget (~15M steps/iter on 1024 envs)
+  checkpoint_interval: 200     # <= epochs so mid-iteration checkpoints actually fire
+  learning_rate: 1.0e-3
+  lr_reduction_factor: 0.5
+
+evaluation:
+  episodes: 8
+  fall_threshold_s: 3.0
+  min_progress_distance_m: 1.0
+  time_to_goal_threshold_s: 12.0
+  path_efficiency_threshold: 0.6
+  secondary_metrics_enabled: true
+
+s3:
+  bucket: "humanoid-from-scratch-123456789012"
+  prefix: "runs"
+  region: "us-west-2"
+
+capture:
+  capture_interval_epochs: 100
+  width: 1280
+  height: 720
+  env_subset_size: 4
+
+blog:
+  output_location: "runs"
+  output_format: "markdown"
+  llm_narrative_enabled: true
+
+video:
+  width: 1920
+  height: 1080
+  fps: 30

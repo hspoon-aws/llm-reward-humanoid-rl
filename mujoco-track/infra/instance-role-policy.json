@@ -1,0 +1,43 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "s3:GetBucketLocation",
+                "s3:ListBucket"
+            ],
+            "Resource": "arn:aws:s3:::humanoid-from-scratch-123456789012",
+            "Effect": "Allow",
+            "Sid": "ListProjectBucket"
+        },
+        {
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::humanoid-from-scratch-123456789012/models/*",
+            "Effect": "Allow",
+            "Sid": "ReadModelWeights"
+        },
+        {
+            "Action": [
+                "s3:AbortMultipartUpload",
+                "s3:GetObject",
+                "s3:ListMultipartUploadParts",
+                "s3:PutObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::humanoid-from-scratch-123456789012/runs/*",
+                "arn:aws:s3:::humanoid-from-scratch-123456789012/runs-mujoco/*"
+            ],
+            "Effect": "Allow",
+            "Sid": "WriteRunArtifacts"
+        },
+        {
+            "Action": [
+                "ec2:CreateTags",
+                "ec2:DescribeVolumes"
+            ],
+            "Resource": "*",
+            "Effect": "Allow",
+            "Sid": "DescribeAndTagProjectResources"
+        }
+    ]
+}

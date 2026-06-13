@@ -1,0 +1,103 @@
+You are an expert reinforcement-learning reward engineer working with NVIDIA Isaac Lab.
+
+You previously generated a reward function for this task. Below are the
+results of training and evaluating a PPO policy with it. Your job is to
+produce an IMPROVED reward function that addresses the observed weaknesses.
+
+TASK
+----
+{task_description}
+
+GOAL
+----
+{goal_description}
+
+ENVIRONMENT
+-----------
+Isaac Lab task: Isaac-Velocity-Flat-H1-v0 (manager-based), reframed
+for point-to-point goal-reaching on flat terrain.
+Robot: Unitree H1 humanoid, 19 DOF. Point A (origin) -> point B (Goal); arrive
+within the success radius while upright and efficient.
+There is NO camera and NO image/visual modality; the reward reads env state
+only (base pose/velocity, joint pos/vel, joint torques, foot contacts, Goal).
+Observation space (~69-dim proprioceptive, goal-conditioned) layout:
+{obs_space}
+
+STATE ACCESS (use these EXACT accessors — do NOT invent attribute names):
+  robot = env.scene["robot"]
+  robot.data.root_pos_w      # (num_envs, 3) base position world frame (x, y, z)
+  env.scene.env_origins      # (num_envs, 3) per-env grid origin in world frame
+  robot.data.root_quat_w     # (num_envs, 4) base quaternion (w, x, y, z)
+  robot.data.root_lin_vel_b  # (num_envs, 3) base linear velocity (base frame)
+  robot.data.root_ang_vel_b  # (num_envs, 3) base angular velocity (base frame)
+  robot.data.joint_pos       # (num_envs, 19) joint positions
+  robot.data.joint_vel       # (num_envs, 19) joint velocities
+  robot.data.applied_torque  # (num_envs, 19) applied joint torques
+  env.scene["contact_forces"].data.net_forces_w  # (num_envs, num_bodies, 3)
+  env.goal.position_xy       # (x, y) target on the ground plane
+  env.goal.success_radius_m  # float arrival radius
+Prefer reading kinematics from `obs` (above); use `env` accessors for anything
+not in `obs` (world-frame base position, torques, contact forces).
+CRITICAL — env-local frame: ``root_pos_w`` is ABSOLUTE world position and
+includes each env's grid origin (``env.scene.env_origins``, tens of metres).
+The Goal is env-local, so localize before any distance/heading computation:
+``pos_local = robot.data.root_pos_w[:, :2] - env.scene.env_origins[:, :2]``;
+then ``to_goal = goal_xy - pos_local``. Raw ``root_pos_w`` vs the local goal is
+a frame bug that makes distance read as the ~30 m env offset.
+
+METRICS HISTORY (most recent last)
+----------------------------------
+{metrics_history}
+
+ANALYSIS / GUIDANCE
+-------------------
+{guidance}
+
+HARD REQUIREMENTS (unchanged)
+-----------------------------
+1. Define exactly one function:
+
+   def compute_reward(env, obs, actions):
+       ...
+       return reward, components   # reward: (num_envs,), components: dict[str, (num_envs,)]
+
+2. Use only torch operations. Import nothing except torch.
+3. No file, network, os/sys/eval/exec access. No camera/image input.
+4. Every component appears in `components`; `reward` equals their sum.
+5. Keep tensors on the same device/dtype as `obs`. Guard against NaN/Inf.
+
+REFINEMENT STRATEGY
+-------------------
+- Read the metrics trend. Keep what worked; change what didn't.
+- If the robot falls early (low upright time / high fall rate), strengthen
+  balance/upright terms and reduce other pressure until it stays standing.
+- If the robot stays upright but makes no progress toward the Goal, increase
+  the progress-toward-goal / distance-reduction term.
+- If it approaches but overshoots or never settles, add or strengthen the
+  arrival bonus inside the success radius and a small velocity penalty near
+  the Goal so it stops there.
+- If the path is inefficient (low path efficiency), reward more direct motion
+  toward the Goal heading.
+- IF THE ROBOT WALKS BACKWARD OR SIDEWAYS (a humanoid reaching the Goal facing
+  away from it, or shuffling): a distance/progress-only reward is being gamed.
+  You MUST add or strengthen a HEADING/FACING term so the robot faces and walks
+  FORWARD into the Goal. Reward alignment between the robot's forward (+x base)
+  axis and the goal direction (derive yaw from root_quat_w; goal bearing from
+  goal_xy - pos_xy), and reward POSITIVE forward base velocity
+  (root_lin_vel_b[:, 0]) toward the Goal while penalizing negative (backward)
+  and large lateral base velocity. Make this term strong enough that backward
+  locomotion is no longer reward-optimal.
+- If motion is jerky or asymmetric, add gait-smoothness (joint jerk) and
+  left/right symmetry terms; if energy use is high, add a torque penalty.
+- Change reward weights deliberately; explain each change briefly.
+
+OUTPUT FORMAT
+-------------
+Respond with a short explanation of what you changed and why, then the new
+function in a single Python code block:
+
+```python
+def compute_reward(env, obs, actions):
+    ...
+    return reward, components
+```

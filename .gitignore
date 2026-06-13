@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Test / hypothesis
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# CDK
+**/cdk.out/
+
+# OS / editor
+.DS_Store
+*.swp
+.vscode/
+
+# Run artifacts (checkpoints, metrics) - not committed
+runs/
+runs-mujoco/
+*.pt
+*.pkl
+*.log
+
+# NOTE: blog demo videos under blog/assets/ ARE committed intentionally.

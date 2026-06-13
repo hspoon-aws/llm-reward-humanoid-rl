@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Can a robot do the chores if I just ask it nicely? A 24-hour experiment in LLM-written reward functions</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --muted: #5b6470;
+    --accent: #0b6e4f;
+    --accent-soft: #e8f3ee;
+    --rule: #e3e6ea;
+    --code-bg: #f6f8fa;
+    --table-head: #f0f3f6;
+    --maxw: 760px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    line-height: 1.7;
+    background: #fff;
+    font-size: 18px;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 3.5rem 1.25rem 5rem; }
+  header.post { margin-bottom: 2.5rem; }
+  h1 {
+    font-size: 2.15rem;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin: 0 0 1rem;
+  }
+  .dek { color: var(--muted); font-size: 1.05rem; margin: 0; }
+  h2 {
+    font-size: 1.5rem;
+    letter-spacing: -0.01em;
+    margin: 2.8rem 0 1rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--rule);
+  }
+  h2:first-of-type { border-top: none; padding-top: 0; }
+  p { margin: 1rem 0; }
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(11,110,79,0.3); }
+  a:hover { border-bottom-color: var(--accent); }
+  strong { font-weight: 650; }
+  em { font-style: italic; }
+  ul, ol { padding-left: 1.3rem; }
+  li { margin: 0.5rem 0; }
+  code {
+    font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--code-bg);
+    padding: 0.12em 0.38em;
+    border-radius: 4px;
+    border: 1px solid var(--rule);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    line-height: 1.5;
+    font-size: 0.82rem;
+  }
+  pre code { background: none; border: none; padding: 0; font-size: inherit; }
+  blockquote {
+    margin: 1.6rem 0;
+    padding: 0.9rem 1.2rem;
+    background: #fdf6e3;
+    border-left: 4px solid #e0a93b;
+    border-radius: 0 8px 8px 0;
+    color: #5c4408;
+  }
+  blockquote p { margin: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.6rem 0;
+    font-size: 0.92rem;
+    display: block;
+    overflow-x: auto;
+  }
+  thead th { background: var(--table-head); }
+  th, td {
+    border: 1px solid var(--rule);
+    padding: 0.55rem 0.7rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { font-weight: 650; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 2.6rem 0; }
+  .footnote-ref { font-size: 0.78em; vertical-align: super; line-height: 0; }
+  .references ol { padding-left: 1.2rem; }
+  .references li { margin: 0.7rem 0; }
+  .colophon { color: var(--muted); font-size: 0.92rem; font-style: italic; }
+  .figure {
+    margin: 1.8rem 0;
+    text-align: center;
+  }
+  .figure pre { text-align: left; display: inline-block; min-width: 100%; }
+  .figure.media video {
+    width: 100%;
+    max-width: 640px;
+    border-radius: 10px;
+    border: 1px solid var(--rule);
+    background: #000;
+    display: block;
+    margin: 0 auto;
+  }
+  figcaption {
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin-top: 0.7rem;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+  }
+  .figure svg {
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: #fff;
+    padding: 0.6rem;
+  }
+  /* side-by-side video pair */
+  .video-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    margin: 1.8rem 0 0.6rem;
+  }
+  .video-pair video {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--rule);
+    background: #000;
+  }
+  .vcap { font-size: 0.8rem; color: var(--muted); text-align: center; margin-top: 0.3rem; }
+  .vcap .bad { color: #b3261e; font-weight: 650; }
+  .vcap .good { color: var(--accent); font-weight: 650; }
+  /* takeaway scorecard */
+  .scorecard { margin: 1.8rem 0; display: grid; gap: 0.7rem; }
+  .card {
+    display: grid;
+    grid-template-columns: 2.4rem 1fr;
+    align-items: center;
+    gap: 0.9rem;
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+    border-radius: 10px;
+    padding: 0.85rem 1.1rem;
+    background: #fff;
+  }
+  .card .num { font-size: 1.4rem; font-weight: 700; color: var(--accent); text-align: center; }
+  .card .body { line-height: 1.4; }
+  .card .body b { display: block; font-size: 1.02rem; margin-bottom: 0.1rem; }
+  .card .body span { font-size: 0.9rem; color: var(--muted); }
+  .card.amber { border-left-color: #e0a93b; }
+  .card.amber .num { color: #c2851a; }
+  .card.green { border-left-color: var(--accent); }
+  .card.green .num { color: var(--accent); }
+  @media (max-width: 600px) {
+    .video-pair { grid-template-columns: 1fr; }
+    .card { grid-template-columns: 2rem 1fr; }
+  }
+  .highlight-row td { background: var(--accent-soft); }
+  @media (max-width: 600px) {
+    body { font-size: 17px; }
+    h1 { font-size: 1.7rem; }
+    .wrap { padding: 2.5rem 1rem 3.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<article>
+
+<header class="post">
+  <h1>Can a robot do the chores if I just ask it nicely?</h1>
+  <p class="dek">A 24-hour experiment in LLM-written reward functions.</p>
+</header>
+
+<h2>The question that started it</h2>
+
+<p>My wife asked me a fair question over dinner: <em>"Why can't we just buy a home robot and tell it to do the laundry?"</em></p>
+
+<p>I did a robotics master's almost twenty years ago. The honest answer I gave her was some mumble about "it's complicated." But the question stuck, because the part that is <em>actually</em> hard isn't the motors or the cameras anymore. It's that someone, somewhere, has to translate "do the laundry" into a precise mathematical objective the robot can optimise. That translation is a specialist craft, and it's the bottleneck.</p>
+
+<p>Then a 24-hour reservation for a very large GPU instance landed in my lap (thanks Alick!): eight of NVIDIA's newest data-center accelerators, the kind of machine you don't normally get to play with. I had one day. So I pointed that twenty-year-old curiosity at my wife's question and tried to build the smallest honest version of an answer: <strong>can you describe a behaviour to a robot in plain English, and have the system figure out the rest?</strong></p>
+
+<p>This is the write-up. It has one genuine breakthrough, several instructive failures, and a few findings about hardware and cost that surprised me enough to be worth your time. I'll keep the boring parts out.</p>
+
+<h2>The idea: stop hand-writing the reward</h2>
+
+<p>If you've used AWS DeepRacer, you already understand 80% of this. You teach a car to drive by writing a <strong>reward function</strong>, a short Python function that scores the car each step (stay near the centerline, get points; keep your speed up, get points). Then you train, watch it do something dumb, and <em>tweak the function by hand</em>. Re-train. Repeat. The RL algorithm is fixed; the thing you hand-iterate is the reward.</p>
+
+<p>That hand-tuning has been on my wishlist to automate for years, because it's so obviously a job for a language model: <em>what if the LLM writes the reward, reads the results, and refines it, and I just describe what I want?</em> That's the <strong>Eureka loop</strong> (<a href="https://arxiv.org/abs/2310.12931" target="_blank" rel="noopener">2023 paper</a>):</p>
+
+<figure class="figure">
+<svg viewBox="0 0 760 300" width="100%" role="img" aria-label="The Eureka loop: humanoid environment and task description feed an LLM that writes reward functions, trained by DRL, with results fed back to refine the reward">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6470"/>
+    </marker>
+    <marker id="arc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0b6e4f"/>
+    </marker>
+  </defs>
+  <style>
+    .ebox { rx: 9; ry: 9; stroke-width: 1.5; }
+    .etext { font: 600 13px -apple-system, sans-serif; fill: #fff; }
+    .etext-d { font: 600 13px -apple-system, sans-serif; fill: #1a1a1a; }
+    .eflow { stroke: #5b6470; stroke-width: 1.6; fill: none; }
+    .elbl { font: 11px -apple-system, sans-serif; fill: #5b6470; }
+  </style>
+
+  <!-- inputs (left) -->
+  <rect class="ebox" x="14" y="48" width="150" height="58" fill="#1f9d6b" stroke="#178055"/>
+  <text class="etext" x="89" y="72" text-anchor="middle">Unitree H1</text>
+  <text class="etext" x="89" y="90" text-anchor="middle">environment</text>
+
+  <rect class="ebox" x="14" y="150" width="150" height="58" fill="#2aa9e0" stroke="#1d8cbf"/>
+  <text class="etext" x="89" y="174" text-anchor="middle">Task in plain</text>
+  <text class="etext" x="89" y="192" text-anchor="middle">English</text>
+
+  <!-- combine symbol -->
+  <circle cx="196" cy="128" r="13" fill="#fff" stroke="#5b6470" stroke-width="1.5"/>
+  <line x1="187" y1="119" x2="205" y2="137" stroke="#5b6470" stroke-width="1.5"/>
+  <line x1="205" y1="119" x2="187" y2="137" stroke="#5b6470" stroke-width="1.5"/>
+  <path class="eflow" d="M164,77 H196 V116" marker-end="url(#ar)"/>
+  <path class="eflow" d="M164,179 H196 V141" marker-end="url(#ar)"/>
+
+  <!-- dashed loop container -->
+  <rect x="234" y="16" width="512" height="268" rx="14" fill="none" stroke="#1d8cbf" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <path class="eflow" d="M209,128 H234" marker-end="url(#ar)"/>
+
+  <!-- LLM box -->
+  <rect class="ebox" x="268" y="52" width="170" height="60" fill="#c879d6" stroke="#a857b8"/>
+  <text class="etext" x="353" y="78" text-anchor="middle">LLM writes</text>
+  <text class="etext" x="353" y="96" text-anchor="middle">reward code</text>
+
+  <!-- Reward box -->
+  <rect class="ebox" x="556" y="52" width="170" height="60" fill="#f0a868" stroke="#d98324"/>
+  <text class="etext-d" x="641" y="78" text-anchor="middle">Reward</text>
+  <text class="etext-d" x="641" y="96" text-anchor="middle">function</text>
+
+  <!-- RL/PPO training box -->
+  <rect class="ebox" x="556" y="196" width="170" height="60" fill="#3a4250" stroke="#2a313c"/>
+  <text class="etext" x="641" y="222" text-anchor="middle">RL training</text>
+  <text class="etext" x="641" y="240" text-anchor="middle">(PPO policy)</text>
+
+  <!-- Feedback box -->
+  <rect class="ebox" x="268" y="196" width="170" height="60" fill="#aeb6bf" stroke="#8b939c"/>
+  <text class="etext-d" x="353" y="222" text-anchor="middle">Feedback:</text>
+  <text class="etext-d" x="353" y="240" text-anchor="middle">metrics + video</text>
+
+  <!-- central refine arrows (circular) -->
+  <path d="M470,168 A40 40 0 0 1 470,108" class="eflow" stroke="#0b6e4f" stroke-width="2.4" marker-end="url(#arc)"/>
+  <path d="M524,108 A40 40 0 0 1 524,168" class="eflow" stroke="#0b6e4f" stroke-width="2.4" marker-end="url(#arc)"/>
+  <text class="elbl" x="497" y="143" text-anchor="middle" fill="#0b6e4f">refine</text>
+
+  <!-- flow arrows around the loop -->
+  <path class="eflow" d="M438,82 H556" marker-end="url(#ar)"/>           <!-- LLM -> reward -->
+  <text class="elbl" x="497" y="74" text-anchor="middle">writes</text>
+  <path class="eflow" d="M641,112 V196" marker-end="url(#ar)"/>          <!-- reward -> training -->
+  <text class="elbl" x="664" y="156">trains</text>
+  <path class="eflow" d="M556,226 H438" marker-end="url(#ar)"/>          <!-- training -> feedback -->
+  <text class="elbl" x="497" y="218" text-anchor="middle">scores</text>
+  <path class="eflow" d="M353,196 V112" marker-end="url(#ar)"/>          <!-- feedback -> LLM -->
+  <text class="elbl" x="330" y="156" text-anchor="end">feeds back</text>
+</svg>
+<figcaption>The Eureka loop: the robot environment and a plain-English task combine to prompt an LLM, which writes a reward function; PPO trains a policy on it; metrics and video feed back so the model refines the reward, and round again.</figcaption>
+</figure>
+
+<p>The LLM writes the same <code>compute_reward(...)</code> you'd hand-write for DeepRacer, except the author is an AI code model and the loop is automated. The payoff: <strong>the control surface becomes a sentence.</strong> Change <em>"walk to the goal"</em> to <em>"stand up and steady yourself, turn to face the goal, walk toward it with smooth even strides staying upright, then slow down and stop balanced on arrival"</em> and the gait changes, with no human editing reward math.</p>
+
+<p>My target wasn't a laundry-folding arm (24 hours is 24 hours). It was a <strong>Unitree H1 humanoid</strong> learning to walk to a point and stop there, upright: the "hello world" of what my wife actually wants. The headline finding, which the rest of the post earns: <strong>the LLM's reasoning was never the bottleneck. The scaffolding around it was.</strong></p>
+
+<h2>First surprise: I didn't choose the hardware. The simulator did.</h2>
+
+<p>I assumed the newest, most expensive GPU would be best at everything. Wrong, and the way it was wrong reshaped the project.</p>
+
+<p>I had two simulators in mind: <strong>NVIDIA Isaac Lab</strong> (photorealistic, PyTorch) and <strong>MuJoCo MJX</strong> (physics-first, JAX). Isaac Lab refused to start on the big new GPU, not slowly but <em>at all</em>, for a reason no config could fix:</p>
+
+<blockquote><p>The brand-new ~$110/hr data-center GPU <strong>can't launch a simulator that a humble ~$3/hr graphics card runs without complaint.</strong></p></blockquote>
+
+<p>"RTX vs Blackwell" is a category error: <em>architecture</em> (generation, raw speed) and <em>RT cores</em> (the ray-tracing hardware graphics needs) are independent axes. The data-center Blackwell card is newest-generation <strong>and</strong> has no RT cores, because NVIDIA stripped them out for more AI compute. Isaac Lab's renderer needs them; MuJoCo's physics doesn't.</p>
+
+<table>
+  <thead><tr><th></th><th>Data-center Blackwell (8-GPU)</th><th>L40S / L4 (single GPU)</th></tr></thead>
+  <tbody>
+    <tr><td>RT cores</td><td><strong>No</strong></td><td><strong>Yes</strong></td></tr>
+    <tr><td>Runs Isaac Lab?</td><td><strong>No</strong></td><td><strong>Yes</strong></td></tr>
+    <tr><td>Runs MuJoCo MJX?</td><td><strong>Yes, fast</strong></td><td>Yes, slower</td></tr>
+    <tr><td>Hosts a 30B LLM?</td><td><strong>Yes</strong></td><td>Tight</td></tr>
+    <tr><td>~Cost</td><td>~$110+/hr</td><td>~$3/hr</td></tr>
+  </tbody>
+</table>
+
+<p>So the project split into two tracks, each engine on the hardware that fits it: <strong>Isaac Lab + PyTorch on the L40S</strong>, <strong>MuJoCo MJX + JAX on the Blackwell box</strong>. Running both surfaced one finding I didn't expect: the LLM-written reward code <em>doesn't port</em> between them (<code>torch</code> tensors on one side, jit-compatible <code>jax.numpy</code> on the other), so the same English task produced two genuinely different functions.</p>
+
+<blockquote><p><strong>Pick your simulator first; it dictates your GPU class.</strong> Feasibility (does it have RT cores?) beats raw speed. A faster card you can't boot the simulator on is worth nothing.</p></blockquote>
+
+<h2>Second surprise: self-hosting the LLM was the <em>expensive</em> option</h2>
+
+<p>The "free" choice is to self-host the model (Qwen3-Coder-30B) on the GPU I'd already paid for; the alternative is a managed API. I expected self-hosting to be frugal. It wasn't.</p>
+
+<p>The workload is tiny: ~100 calls over 24 hours, well under a million tokens. On a managed API (Amazon Bedrock) that's <strong>$12–40 for the whole run</strong>. Self-hosting has no token bill but parks a model on one whole GPU for the sprint, about <strong>$340 of capacity</strong>, and one fewer GPU training the policy. The real axis was never dollars-per-token; it was <strong>which GPU does what</strong>.</p>
+
+<blockquote><p><strong>Price the resource the "free" option silently consumes.</strong> Self-hosting trades a token bill for a GPU-hours bill. At low volume the fixed cost loses; at high volume it wins.</p></blockquote>
+
+<h2>The hour-zero tax: three stalls that looked like crashes</h2>
+
+<p>On a metered GPU the first hour is where money quietly burns. Three times something looked frozen and wasn't. Each was a one-time setup cost being paid at full GPU rates:</p>
+
+<ul>
+  <li><strong>Weights loading at 4.4 MB/s.</strong> A snapshot-restored volume hydrates lazily on first read. Fix: pull from object storage to local NVMe instead (170+ MB/s).</li>
+  <li><strong>A kernel compiling itself.</strong> On a brand-new GPU arch, some kernels JIT-compile on first run. Not hung, just building. Let it finish once, cache the result.</li>
+  <li><strong>A Docker build on the 8-GPU node.</strong> 12 minutes at 0% GPU, downloading packages on the most expensive machine I'll ever rent.</li>
+</ul>
+
+<blockquote><p><strong>Figure out what genuinely needs the GPU, and pre-stage everything else.</strong> Weight hydration, kernel compiles, image builds: none need the expensive silicon, and all will gladly run on it at full price.</p></blockquote>
+
+<h2>Steering the model: the prompt is an interface contract</h2>
+
+<p>Can a language model write a <em>correct</em> reward function for a robot it has never seen? Mostly yes, as long as you tell it exactly what it's working with. Think of the prompt like a brief you'd hand a new contractor: the more precise the brief, the better the work. I spelled out exactly what each sensor reading meant, the exact shape the function had to take, a short numbered list of rules, and even what <em>didn't</em> exist ("there is no camera; work from the physics only"). Given all that, the model wrote clean, working code on the first try.</p>
+
+<p>The trouble started with the one thing I left vague. Here's the pattern, and it's the whole lesson:</p>
+
+<blockquote><p>The model gets right whatever you spell out, and <strong>hallucinates whatever you leave unsaid.</strong> For the one interface I didn't describe, it confidently invented function names that sounded plausible but didn't exist. So either spell everything out, or validate the generated code against the real interface before an expensive training run.</p></blockquote>
+
+<h2>Where RL fought back</h2>
+
+<p>The pipeline worked early; the <em>robot</em> took much longer. The detours were the most transferable lessons:</p>
+
+<p><strong>Reward hacking is the default.</strong> Asked to reduce its distance to the goal, the humanoid found two cheats before it ever found walking. In MuJoCo it learned to <strong>topple toward the goal</strong>, since falling forward is a very efficient way to close a distance (path-efficiency a damning 0.97). In Isaac it found a subtler one: stay perfectly upright but <strong>back-pedal to the goal</strong>, because the reward credited closing distance without ever specifying which way the robot should face. Same root cause as a hand-written DeepRacer reward gamed by a car that zig-zags to farm centerline points; the loop just industrialises both the writing and the gaming.</p>
+
+<div class="video-pair">
+  <div>
+    <video src="assets/videos/mujoco-face-planting.mp4" autoplay loop muted playsinline></video>
+    <div class="vcap"><span class="bad">Reward hacking, take 1:</span> face-plants forward to farm the distance reward</div>
+  </div>
+  <div>
+    <video src="assets/videos/issac-backward-side.mp4" autoplay loop muted playsinline></video>
+    <div class="vcap"><span class="bad">Reward hacking, take 2:</span> stays balanced but walks there backwards</div>
+  </div>
+</div>
+
+<p><strong>Two more traps.</strong> The reward score is not task success, so pick the best policy on a reward-<em>independent</em> scorecard (did it reach the goal? stay upright?), never on the reward the model is maximising. And balance comes before locomotion: terminate-on-fall only helps if staying alive is net-positive per step, or the robot learns to "die fast" to stop the penalties.</p>
+
+<p><strong>The bug that faked success.</strong> One run showed success rate climbing 0&nbsp;→&nbsp;0.98 while the video showed the robot face-planting. A coordinate-frame mix-up (world vs. local position) made the metric, the policy's goal input, <em>and</em> the reward all silently wrong: numbers that looked plausible and meant nothing.</p>
+
+<p><strong>The fix that finally worked.</strong> For ages the loop couldn't <em>improve</em> across iterations, because <strong>the LLM never saw its own previous reward code</strong>, so it rewrote blind every time. Showing it the best-so-far code and asking for small edits, selecting on a composite score, and warm-starting from the true best policy: that combination produced the first policy that walked to the goal.</p>
+
+<h2>Results, honestly</h2>
+
+<p>Here's what "a sentence became a gait" actually looks like: a policy trained entirely on an LLM-written reward, no hand-tuned reward math anywhere in the loop.</p>
+
+<figure class="figure media">
+  <video src="assets/isaac-best/best_policy_chase.mp4" autoplay loop muted playsinline controls width="640"></video>
+  <figcaption>The H1 humanoid walking under an LLM-authored reward, upright and moving toward the goal. The behaviour came from an English task description, not hand-written reward terms.</figcaption>
+</figure>
+
+<p>Getting there took several rounds, each fixing the failure mode the last one exposed. Every step forward came from a <em>scaffolding</em> change, not a smarter model:</p>
+
+<table>
+  <thead><tr><th>Round</th><th>Reward LLM</th><th>What changed</th><th>What the robot did</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Qwen3-Coder-30B</td><td>naive distance reward</td><td>Fell toward the goal to farm distance</td></tr>
+    <tr><td>2</td><td>Qwen3-Coder-30B</td><td>added fall termination</td><td>Learned to "die fast" to stop penalties</td></tr>
+    <tr><td>3</td><td>Claude Opus 4.8</td><td>stronger standing reward</td><td>Balanced longer, but couldn't keep improving</td></tr>
+    <tr class="highlight-row"><td><strong>4</strong></td><td><strong>Claude Opus 4.8</strong></td><td><strong>showed the model its own best reward, kept the best policy, warm-started</strong></td><td><strong>Stood, stayed up, and walked toward the goal</strong></td></tr>
+  </tbody>
+</table>
+
+<p>The breakthrough wasn't a clean rising line, and that's the honest part. The policy got better, then briefly worse, then better again. Learning a skill like this is a slow, uneven climb: it takes many rounds of practice, and progress is never strictly monotonic. The two things that made that climb pay off were keeping the best policy across rounds (rather than trusting the latest one) and simply giving it enough time to keep learning. <strong>Continuous learning needs runway.</strong> The pipeline is proven end-to-end; the result is a promising start, not a finished walker, mostly because 24 hours is a short time to learn to walk.</p>
+
+<p>The single most valuable habit across the whole project: <strong>read the video, check the frame, question the number.</strong> Every real bug was caught by distrusting a green metric and watching what the robot actually did. The pipeline being <em>green</em> and the robot being <em>good</em> are different claims, and conflating them was my most recurring mistake.</p>
+
+<h2>What it would actually take <span style="font-weight:400;color:var(--muted);font-size:1rem;">(the real takeaway)</span></h2>
+
+<p>The gap between "my humanoid took a few steps" and "a robot that does chores on request" <strong>isn't a smarter language model.</strong> The model was rarely the bottleneck. The gap is <strong>scaffolding</strong>: five pieces I faked, simplified, or skipped, and each one is a place a real system would invest.</p>
+
+<div class="scorecard">
+  <div class="card amber">
+    <div class="num">1</div>
+    <div class="body"><b>Intent → reward translator</b><span>"Walk to the goal" isn't enough. The model needs the robot, the physics, and the task broken into sub-behaviours. The sentence is easy; the context is the work. <a href="#references" class="footnote-ref">[1]</a></span></div>
+  </div>
+  <div class="card amber">
+    <div class="num">2</div>
+    <div class="body"><b>Faithful robot + world model</b><span>Joint limits, sensors, actuators, contacts, and termination rules baked in, so the model reasons about <em>operating</em> the robot, not rediscovering its physics. Painstaking modelling, not a product.</span></div>
+  </div>
+  <div class="card amber">
+    <div class="num">3</div>
+    <div class="body"><b>A pre-trained base policy</b><span>I trained balance from zero and burned the budget. Start from a locomotion foundation model and "walk to a point" becomes fine-tuning, not ground-up training. <a href="#references" class="footnote-ref">[2]</a></span></div>
+  </div>
+  <div class="card amber">
+    <div class="num">4</div>
+    <div class="body"><b>Close the sim-to-real gap with real feedback</b><span>A policy trained only in simulation learns the simulator's quirks, not the real world. The fix is richer, grounded feedback: a vision model that <em>watches the rollout</em> <a href="#references" class="footnote-ref">[3]</a>, and ultimately <em>real robot sensor data</em> fed back into the loop <a href="#references" class="footnote-ref">[4]</a>, so the robot is judged on reality, not on sim. The one I'd prioritise.</span></div>
+  </div>
+  <div class="card green">
+    <div class="num">5</div>
+    <div class="body"><b>GPU orchestration at scale</b><span>Keep the expensive silicon busy and train a <em>population</em> of reward candidates in parallel. Managed clusters + multi-node scheduling already do this off the shelf. <a href="#references" class="footnote-ref">[5]</a></span></div>
+  </div>
+</div>
+
+<blockquote><p>The hard part was never the LLM's reasoning. It was everything around it: the context you feed it, the world model it reasons about, the skills it starts from, the eyes you give it, and the machinery that runs it at scale. <strong>None of it is "the model isn't smart enough."</strong></p></blockquote>
+
+<h2>So, can it do the chores?</h2>
+
+<p>Not yet. But I can now tell my wife <em>exactly why not</em>, a far more interesting answer than "it's complicated."</p>
+
+<p>The core mechanic works: a sentence became a reward function became a gait, with no human hand-tuning the reward math. That's been on my wishlist since the DeepRacer days, and it genuinely functions. The chore robot isn't in my house yet, but the five things between here and there are now a concrete list, not a mystery. And the path runs straight through the same reward-function craft I first met teaching a toy car to stay on a track.</p>
+
+<p>If it ever does land in my living room, I have one modest hope: that it listens to my instructions a little better than my two sons do. Admittedly, that's a low bar, and the robot still falls over.</p>
+
+<hr>
+
+<section class="references" id="references">
+<h2>References</h2>
+<ol>
+  <li><strong>LLM-generated reward functions / intent-to-reward:</strong> <a href="https://arxiv.org/abs/2310.12931" target="_blank" rel="noopener">Eureka: Human-Level Reward Design via Coding LLMs</a>; <a href="https://text-to-reward.github.io/" target="_blank" rel="noopener">Text2Reward: Reward Shaping with Language Models</a>; <a href="https://arxiv.org/html/2306.08647" target="_blank" rel="noopener">Language to Rewards for Robotic Skill Synthesis</a>.</li>
+  <li><strong>Humanoid locomotion foundation models / pretraining + fine-tuning:</strong> <a href="https://arxiv.org/html/2511.04131v1" target="_blank" rel="noopener">A Promptable Behavioral Foundation Model for Humanoid Control</a>; <a href="https://arxiv.org/html/2512.00971" target="_blank" rel="noopener">Cross-Humanoid Locomotion Pretraining for Few-shot Transfer</a>.</li>
+  <li><strong>Vision/video feedback for reward design:</strong> <a href="https://arxiv.org/html/2606.01672v1" target="_blank" rel="noopener">Reward Design Agent for RL</a>; <a href="https://arxiv.org/html/2412.05515v1" target="_blank" rel="noopener">Generating Reward Functions from Videos for Legged Robot Behavior Learning</a>.</li>
+  <li><strong>Closing the sim-to-real gap (AWS + NVIDIA):</strong> <a href="https://aws.amazon.com/blogs/industries/accelerating-physical-ai-with-aws-and-nvidia-building-production-ready-applications-with-simulation-and-real-world-learning/" target="_blank" rel="noopener">Accelerating Physical AI with AWS and NVIDIA</a> (simulation + real-world learning).</li>
+  <li><strong>GPU orchestration at scale (AWS-native):</strong> <a href="https://docs.aws.amazon.com/solutions/ai-driven-robotic-simulation-and-training-on-aws/" target="_blank" rel="noopener">AI-Driven Robotic Simulation and Training on AWS</a> (Isaac Sim on EC2 + Bedrock-generated rewards); <a href="https://aws.amazon.com/blogs/machine-learning/scale-robot-reinforcement-learning-with-nvidia-isaac-lab-on-amazon-sagemaker-ai/" target="_blank" rel="noopener">Scale Robot RL with NVIDIA Isaac Lab on Amazon SageMaker AI</a>; <a href="https://isaac-sim.github.io/IsaacLab/main/source/features/ray.html" target="_blank" rel="noopener">Isaac Lab Ray job dispatch and tuning</a>.</li>
+</ol>
+</section>
+
+<hr>
+
+<p class="colophon">Built over a single 24-hour GPU reservation: a Unitree H1 humanoid, an Eureka-style LLM→reward→RL loop, on both NVIDIA Isaac Lab (PyTorch/RSL-RL) and MuJoCo MJX (JAX/Brax). Reward functions written by Qwen3-Coder-30B and Claude Opus 4.8. All failures my own.</p>
+
+</article>
+</div>
+</body>
+</html>

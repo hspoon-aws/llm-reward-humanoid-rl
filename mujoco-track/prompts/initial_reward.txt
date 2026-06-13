@@ -1,0 +1,102 @@
+You are an expert reinforcement-learning reward engineer working with MuJoCo MJX
+(JAX) and the MuJoCo Playground locomotion suite.
+
+TASK
+----
+{task_description}
+
+GOAL
+----
+{goal_description}
+
+ENVIRONMENT
+-----------
+MuJoCo Playground env: H1JoystickGaitTracking (Unitree H1 humanoid), reframed
+for point-to-point goal-reaching on flat terrain.
+Robot: Unitree H1 humanoid (joint position targets).
+This is a point-A-to-point-B task: the robot starts at its reset pose (point A)
+and must walk to a target position (point B, the Goal) and arrive within the
+success radius while staying upright and moving efficiently.
+
+There is NO camera and NO image/visual modality. The reward operates on
+physics state only.
+
+Observation layout (proprioceptive, goal-conditioned; NO pixels):
+{obs_space}
+
+Your job is to write a single Python reward function that maps per-step physics
+state to a scalar reward and a dictionary of named reward components. The
+function is JIT-compiled and vmap'd across thousands of parallel environments,
+so it MUST be written in functional JAX (`jax.numpy`) and be `jax.jit`-safe.
+
+REWARD READS MJX STATE through a `data` handle (an `mjx.Data`). Use these EXACT
+accessors — do NOT invent attribute names:
+
+  data.qpos        # (nq,) generalized positions; root free-joint first
+                   #   qpos[0:3]  = base position world frame (x, y, z)
+                   #   qpos[3:7]  = base orientation quaternion (w, x, y, z)
+                   #   qpos[7:]   = joint positions
+  data.qvel        # (nv,) generalized velocities
+                   #   qvel[0:3]  = base linear velocity, qvel[3:6] = base angular
+                   #   qvel[6:]   = joint velocities
+  data.xpos        # (nbody, 3) body positions, world frame
+  data.actuator_force  # (nu,) applied actuator forces/torques
+  data.cfrc_ext    # (nbody, 6) external contact forces per body (for foot contact)
+
+  # The Goal (point B) is provided to the reward as plain arrays:
+  goal_xy          # (2,) target position on the ground plane
+  success_radius   # scalar arrival radius
+
+HARD REQUIREMENTS (JAX)
+-----------------------
+1. Define exactly one function with this signature:
+
+   def compute_reward(data, action, goal_xy, success_radius):
+       # data:          an mjx.Data for ONE environment (vmap adds the batch axis)
+       # action:        jax.Array of joint targets for this env
+       # goal_xy:       jax.Array shape (2,) — target on the ground plane
+       # success_radius: scalar
+       # returns: (reward, components)
+       #   reward     -> scalar jax.Array
+       #   components -> dict[str, jax.Array scalar]
+       ...
+       return reward, components
+
+2. Use ONLY `jax.numpy` (import as `jnp`) and `jax` ops. Do NOT import torch,
+   numpy, os, sys, or anything else. Do NOT read/write files or the network.
+   (`jnp` and `jax` are pre-provided in scope; `import jax.numpy as jnp` is
+   accepted but unnecessary. No other imports are allowed.)
+3. The function MUST be `jax.jit`-compatible and traceable:
+   - NO Python `if`/`for`/`while` that branches on array VALUES. Use
+     `jnp.where`, `jax.lax.select`, `jax.lax.cond`, `jnp.clip` instead.
+   - NO in-place mutation. Build arrays functionally (`.at[].set(...)` returns
+     a new array).
+   - NO `.item()`, no converting traced arrays to Python scalars.
+   - NO data-dependent shapes; everything statically shaped.
+4. Do NOT reference any camera, image, or pixel input — there is none.
+5. Every reward component MUST be in the `components` dict so it can be logged.
+   The scalar `reward` MUST equal the sum of the component values.
+6. Return finite values only — guard with `jnp.nan_to_num` / `jnp.clip`.
+
+GUIDANCE
+--------
+- This is the FIRST attempt. Start simple and physically grounded.
+- The objective is reaching the Goal. A strong start rewards reducing the
+  distance to the Goal (progress) and arriving within the success radius, while
+  keeping the robot upright so it does not fall on the way. A robot that falls
+  makes no progress, so include an upright/posture term and an alive bonus.
+- Reasonable starting components: goal-distance / progress-toward-goal, an
+  arrival bonus near the Goal, an upright/posture term (base height + quaternion
+  uprightness), an alive bonus, and small penalties on action magnitude and
+  joint velocity for smoothness.
+
+OUTPUT FORMAT
+-------------
+Respond with a short explanation, then the function inside a single Python
+code block:
+
+```python
+def compute_reward(data, action, goal_xy, success_radius):
+    ...
+    return reward, components
+```

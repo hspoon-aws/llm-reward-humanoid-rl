@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "humanoid-mujoco-llm-rl"
+version = "0.1.0"
+description = "Eureka-style LLM -> Reward -> RL loop teaching a Unitree H1 humanoid point-to-point goal-reaching on MuJoCo MJX + Brax PPO."
+requires-python = ">=3.10"
+# Controller-side runtime deps are minimal and CPU-only so the core imports and
+# unit-tests with no GPU. The GPU stack (jax[cuda], mujoco, mujoco_mjx,
+# mujoco_playground, brax) lives on the B200 host and is intentionally NOT a
+# hard dependency here — it is imported lazily behind the MJX trainer adapter.
+dependencies = [
+    "requests",
+    "pyyaml",
+    "boto3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "hypothesis>=6",
+]
+# Installed only on the B200 GPU host (see Dockerfile); kept out of the default
+# install so the off-GPU test suite needs none of it.
+gpu = [
+    "jax[cuda12]",
+    "mujoco",
+    "mujoco-mjx",
+    "playground",
+    "brax",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-q"

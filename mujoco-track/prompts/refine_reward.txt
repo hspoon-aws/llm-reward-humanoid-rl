@@ -1,0 +1,95 @@
+You are an expert reinforcement-learning reward engineer working with MuJoCo MJX
+(JAX) and the MuJoCo Playground locomotion suite.
+
+You previously generated reward functions for this task. Below is the BEST one so
+far, the results it achieved, and the full metrics history. Produce an IMPROVED
+reward function by making SMALL, DELIBERATE changes to the best one — do not
+rewrite it from scratch.
+
+TASK
+----
+{task_description}
+
+GOAL
+----
+{goal_description}
+
+ENVIRONMENT
+-----------
+MuJoCo Playground env: H1JoystickGaitTracking (Unitree H1), reframed for
+point-to-point goal-reaching on flat terrain. Point A (reset pose) -> point B
+(Goal); arrive within the success radius while upright and efficient.
+There is NO camera and NO image/visual modality; the reward reads MJX physics
+state only.
+Observation layout (proprioceptive, goal-conditioned; NO pixels):
+{obs_space}
+
+STATE ACCESS (use these EXACT accessors — do NOT invent attribute names):
+  data.qpos          # (nq,) qpos[0:3]=base xyz, qpos[3:7]=quat(w,x,y,z), qpos[7:]=joints
+  data.qvel          # (nv,) qvel[0:3]=base lin vel, qvel[3:6]=base ang vel, qvel[6:]=joint vel
+  data.xpos          # (nbody, 3) body positions, world frame
+  data.actuator_force  # (nu,) applied actuator forces/torques
+  data.cfrc_ext      # (nbody, 6) external contact forces per body (foot contact)
+  goal_xy            # (2,) target on the ground plane
+  success_radius     # scalar arrival radius
+
+BEST REWARD SO FAR (your starting point — improve THIS code incrementally)
+--------------------------------------------------------------------------
+{best_reward_code}
+
+METRICS HISTORY (most recent last; each block = one iteration's reward + result)
+--------------------------------------------------------------------------------
+{metrics_history}
+
+ANALYSIS / GUIDANCE
+-------------------
+{guidance}
+
+HARD REQUIREMENTS (unchanged, JAX)
+----------------------------------
+1. Define exactly one function:
+
+   def compute_reward(data, action, goal_xy, success_radius):
+       ...
+       return reward, components   # reward: scalar; components: dict[str, scalar]
+
+2. Use ONLY jax.numpy (`jnp`) / `jax` ops. Import nothing else (no torch/numpy/os).
+3. MUST be jax.jit-compatible: no value-dependent Python if/for/while (use
+   jnp.where / jax.lax.select / jax.lax.cond), no in-place mutation, no .item().
+4. No file/network access. No camera/image input.
+5. Every component appears in `components`; `reward` equals their sum.
+6. Guard against NaN/Inf (jnp.nan_to_num / jnp.clip).
+
+REFINEMENT STRATEGY (INCREMENTAL — this is critical)
+----------------------------------------------------
+- START from the BEST REWARD SO FAR above. Change ONE thing at a time
+  (adjust 1-2 weights, or add/remove a single term). Do NOT restructure the
+  whole function — large rewrites discard hard-won progress and destabilize a
+  policy that is being fine-tuned from the previous best.
+- The policy is warm-started from the best-so-far weights, so your reward must
+  remain COMPATIBLE with it: keep the terms that produced the best `upright_time`
+  and only nudge the objective toward the next weakness.
+- Standing/upright must stay net-positive per step. NEVER let the sum of penalty
+  terms exceed the alive/upright reward while standing — that teaches the robot
+  to fall on purpose to end the episode.
+- Diagnose from the metric trend (most recent last):
+  * upright_time LOW / fall_rate HIGH  -> raise upright/alive weight a little;
+    reduce competing penalties. (balance first; locomotion second.)
+  * upright OK, distance_to_goal NOT shrinking -> raise the goal-progress weight
+    a little (reward reduction in distance-to-goal, or velocity toward goal).
+  * approaches but overshoots -> small velocity penalty inside success_radius +
+    larger arrival bonus.
+- If the most recent iteration was WORSE than the best (lower upright_time or
+  larger distance), REVERT toward the best reward and make a smaller change.
+- Change weights deliberately; explain each change in one line.
+
+OUTPUT FORMAT
+-------------
+Respond with a short explanation of what you changed and why (referencing the
+best-so-far result), then the new function in a single Python code block:
+
+```python
+def compute_reward(data, action, goal_xy, success_radius):
+    ...
+    return reward, components
+```

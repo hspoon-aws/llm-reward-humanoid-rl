@@ -1,0 +1,92 @@
+# Run config for the SINGLE-GPU g6/L4 Isaac host using AMAZON BEDROCK for the
+# Language_Model (Claude Opus 4.8) instead of the self-hosted Qwen vLLM.
+#
+# Why: removes the dependency on the B200 vLLM box entirely. The reward-
+# generation calls go to Bedrock's managed Claude Opus 4.8; the whole L4 is free
+# for training (GPU 0 is not reserved when provider=bedrock).
+#
+# Auth: uses the standard AWS credential chain on the host (instance role /
+# env / profile). The g6 instance role must allow bedrock:InvokeModel /
+# bedrock:Converse on the Claude Opus 4.8 model in bedrock_region.
+
+project_tag: "humanoid-llm-rl-poc-bedrock"
+
+max_iterations: 12
+selection_metric: success_rate
+
+# --- natural-language task description (the plain-English control surface) --- #
+# This is the primary "program" of the system: describe the desired behavior in
+# plain English and the LLM compiles it into a reward function that trains the
+# policy. Edit this sentence to change how the robot moves -- no reward math.
+task_description: >
+  Teach a Unitree H1 humanoid to walk NATURALLY FORWARD from its start position
+  (point A) to a target position (point B) on flat terrain, FACING the goal and
+  leading with its front side the whole way. It must arrive within the success
+  radius while staying upright with a stable, human-like gait. Walking backward
+  or sideways/shuffling to the goal is NOT acceptable, even if it reaches the
+  target. This is a point-to-point goal-reaching task, not velocity tracking.
+
+# --- language model: Amazon Bedrock (Claude Opus 4.8) --------------------- #
+llm:
+  provider: "bedrock"
+  bedrock_model_id: "global.anthropic.claude-opus-4-8"
+  bedrock_region: "us-west-2"
+  # endpoint is unused under provider=bedrock but kept for the loader's schema.
+  endpoint: "http://127.0.0.1:8000/v1"
+  max_retries: 6
+  retry_backoff_s: 3.0
+  request_timeout_s: 180.0
+  temperature: 0.4
+  max_tokens: 4096
+  prompts_dir: "prompts"
+
+goal:
+  goal_position: [2.0, 0.0]
+  success_radius_m: 0.75
+
+sandbox:
+  time_limit_s: 5.0
+  max_invalid_retries: 3
+
+# --- training: single L4 (device 0); GPU 0 free (LLM is a managed service) -- #
+training:
+  task: "Isaac-Velocity-Flat-H1-v0"
+  training_gpus: [0]
+  num_envs: 1024
+  oom_fallback_num_envs: 512
+  num_steps_per_env: 24
+  epochs: 600
+  checkpoint_interval: 200
+  learning_rate: 3.0e-4
+  lr_reduction_factor: 0.5
+  warm_start: true             # continuous learning: each iteration continues
+                               # from the previous iteration's trained policy
+
+evaluation:
+  episodes: 8
+  fall_threshold_s: 3.0
+  min_progress_distance_m: 1.0
+  time_to_goal_threshold_s: 12.0
+  path_efficiency_threshold: 0.6
+  secondary_metrics_enabled: true
+
+s3:
+  bucket: "humanoid-from-scratch-123456789012"
+  prefix: "runs"
+  region: "us-west-2"
+
+capture:
+  capture_interval_epochs: 100
+  width: 1280
+  height: 720
+  env_subset_size: 4
+
+blog:
+  output_location: "runs"
+  output_format: "markdown"
+  llm_narrative_enabled: true
+
+video:
+  width: 1920
+  height: 1080
+  fps: 30
