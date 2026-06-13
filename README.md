@@ -39,6 +39,15 @@ The LLM writes a `compute_reward(...)` function; PPO trains a policy with it; an
 evaluator scores the result on metrics the LLM didn't choose; those metrics feed
 back so the model refines the reward. Repeat.
 
+## How it runs on AWS
+
+![AWS architecture: a no-public-IP GPU host in a private subnet runs the LLM-to-reward-to-RL loop, reaching S3 for weights and artifacts and Amazon Bedrock for reward generation, with operator access only through SSM Session Manager and egress via NAT plus VPC endpoints.](blog/assets/aws-architecture.svg)
+
+A single GPU host runs the loop inside a locked-down VPC: no public IP,
+operator access only through SSM Session Manager, weights and run artifacts in
+S3, and (optionally) Amazon Bedrock for reward generation. See
+[`isaac-track/infra/`](isaac-track/infra/) for the CDK stack.
+
 ## A note on the code
 
 This is reference material extracted from a research sprint. It is **not**

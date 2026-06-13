@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" width="960" height="620" font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" role="img" aria-label="AWS architecture: a secure no-public-IP GPU host in a private subnet runs the LLM-to-reward-to-RL loop, reaching S3 for weights and artifacts and Amazon Bedrock for reward generation, with operator access only through SSM Session Manager.">
+  <defs>
+    <marker id="aa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6470"/>
+    </marker>
+  </defs>
+
+  <rect width="960" height="620" fill="#ffffff"/>
+
+  <!-- title -->
+  <text x="28" y="34" font-size="18" font-weight="700" fill="#1a1a1a">AWS architecture — secure GPU host for the LLM&#8594;reward&#8594;RL loop</text>
+  <text x="28" y="54" font-size="12" fill="#5b6470">No public IP. Operator access via SSM only. Egress via NAT + VPC endpoints.</text>
+
+  <!-- operator -->
+  <rect x="28" y="78" width="180" height="48" rx="8" fill="#eef2f6" stroke="#8b939c" stroke-width="1.4"/>
+  <text x="118" y="100" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">Operator</text>
+  <text x="118" y="116" text-anchor="middle" font-size="11" fill="#5b6470">laptop (no SSH)</text>
+
+  <!-- AWS region -->
+  <rect x="28" y="150" width="904" height="450" rx="12" fill="none" stroke="#ff9900" stroke-width="1.8"/>
+  <text x="44" y="174" font-size="12" font-weight="700" fill="#d98324">AWS Cloud &#183; Region us-west-2</text>
+
+  <!-- VPC -->
+  <rect x="48" y="190" width="600" height="392" rx="10" fill="none" stroke="#7d5bbf" stroke-width="1.6"/>
+  <text x="64" y="212" font-size="12" font-weight="700" fill="#7d5bbf">VPC 10.20.0.0/16 &#183; single AZ us-west-2b</text>
+
+  <!-- public subnet -->
+  <rect x="66" y="226" width="246" height="92" rx="8" fill="#eaf4ec" stroke="#1f9d6b" stroke-width="1.3"/>
+  <text x="80" y="245" font-size="11" font-weight="600" fill="#178055">Public subnet</text>
+  <rect x="84" y="256" width="150" height="48" rx="7" fill="#1f9d6b" stroke="#178055"/>
+  <text x="159" y="277" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff">NAT Gateway</text>
+  <text x="159" y="293" text-anchor="middle" font-size="10" fill="#eaf4ec">egress only</text>
+
+  <!-- private subnet -->
+  <rect x="66" y="332" width="564" height="234" rx="8" fill="#e9f1f8" stroke="#1d8cbf" stroke-width="1.3"/>
+  <text x="80" y="351" font-size="11" font-weight="600" fill="#1d8cbf">Private subnet &#183; no public IP &#183; default-deny security group</text>
+
+  <!-- GPU host -->
+  <rect x="84" y="362" width="332" height="190" rx="8" fill="#ffffff" stroke="#3a4250" stroke-width="1.5"/>
+  <text x="100" y="382" font-size="12" font-weight="700" fill="#3a4250">EC2 GPU host &#183; DLAMI &#183; IMDSv2</text>
+
+  <rect x="100" y="394" width="300" height="44" rx="6" fill="#c879d6" stroke="#a857b8"/>
+  <text x="250" y="412" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff">vLLM &#183; Qwen3-Coder-30B (GPU 0)</text>
+  <text x="250" y="428" text-anchor="middle" font-size="10" fill="#f7eafb">loopback only &#183; or off-box via Bedrock</text>
+
+  <rect x="100" y="444" width="300" height="44" rx="6" fill="#3a4250" stroke="#2a313c"/>
+  <text x="250" y="462" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff">RL training &#183; PPO (remaining GPUs)</text>
+  <text x="250" y="478" text-anchor="middle" font-size="10" fill="#cdd3da">Isaac Lab / RSL-RL or MuJoCo MJX / Brax</text>
+
+  <rect x="100" y="496" width="300" height="44" rx="6" fill="#f0a868" stroke="#d98324"/>
+  <text x="250" y="514" text-anchor="middle" font-size="12" font-weight="600" fill="#1a1a1a">Eureka loop orchestrator</text>
+  <text x="250" y="530" text-anchor="middle" font-size="10" fill="#5c4408">generate &#8594; train &#8594; evaluate &#8594; refine</text>
+
+  <!-- VPC endpoints column -->
+  <rect x="436" y="362" width="178" height="44" rx="7" fill="#fff3e0" stroke="#d98324"/>
+  <text x="525" y="380" text-anchor="middle" font-size="11" font-weight="600" fill="#a35a00">S3 gateway endpoint</text>
+  <text x="525" y="396" text-anchor="middle" font-size="10" fill="#a35a00">in-region, off-NAT</text>
+
+  <rect x="436" y="416" width="178" height="48" rx="7" fill="#fff3e0" stroke="#d98324"/>
+  <text x="525" y="435" text-anchor="middle" font-size="11" font-weight="600" fill="#a35a00">SSM interface endpoints</text>
+  <text x="525" y="451" text-anchor="middle" font-size="10" fill="#a35a00">ssm / ec2messages / ssmmessages</text>
+
+  <rect x="436" y="474" width="178" height="48" rx="7" fill="#fff3e0" stroke="#d98324"/>
+  <text x="525" y="493" text-anchor="middle" font-size="11" font-weight="600" fill="#a35a00">Bedrock VPC endpoint</text>
+  <text x="525" y="509" text-anchor="middle" font-size="10" fill="#a35a00">bedrock-runtime</text>
+
+  <!-- right-side managed services -->
+  <rect x="690" y="226" width="222" height="92" rx="8" fill="#eaf4ec" stroke="#1f9d6b" stroke-width="1.4"/>
+  <text x="801" y="258" text-anchor="middle" font-size="13" font-weight="700" fill="#178055">Amazon S3</text>
+  <text x="801" y="278" text-anchor="middle" font-size="11" fill="#178055">models/ (weights, read)</text>
+  <text x="801" y="294" text-anchor="middle" font-size="11" fill="#178055">runs/ (artifacts, write)</text>
+
+  <rect x="690" y="360" width="222" height="74" rx="8" fill="#f3eafb" stroke="#a857b8" stroke-width="1.4"/>
+  <text x="801" y="389" text-anchor="middle" font-size="13" font-weight="700" fill="#7d5bbf">Amazon Bedrock</text>
+  <text x="801" y="409" text-anchor="middle" font-size="11" fill="#7d5bbf">Claude Opus 4.8</text>
+  <text x="801" y="424" text-anchor="middle" font-size="10" fill="#7d5bbf">InvokeModel (reward gen)</text>
+
+  <rect x="690" y="470" width="222" height="56" rx="8" fill="#eef2f6" stroke="#8b939c" stroke-width="1.3"/>
+  <text x="801" y="494" text-anchor="middle" font-size="12" font-weight="600" fill="#5b6470">Internet</text>
+  <text x="801" y="511" text-anchor="middle" font-size="10" fill="#5b6470">pip / apt / model hub (via NAT)</text>
+
+  <!-- arrows -->
+  <!-- operator -> SSM endpoints -->
+  <path d="M118,126 V300 H436 V416" fill="none" stroke="#5b6470" stroke-width="1.5" marker-end="url(#aa)"/>
+  <text x="150" y="320" font-size="10" fill="#5b6470">SSM Session Manager</text>
+  <!-- SSM endpoint -> host -->
+  <path d="M436,440 H416" fill="none" stroke="#5b6470" stroke-width="1.5" marker-end="url(#aa)"/>
+  <!-- host -> S3 gw endpoint -> S3 -->
+  <path d="M400,384 H436" fill="none" stroke="#5b6470" stroke-width="1.5" marker-end="url(#aa)"/>
+  <path d="M614,384 H690 V272" fill="none" stroke="#5b6470" stroke-width="1.5" marker-end="url(#aa)"/>
+  <text x="624" y="356" font-size="10" fill="#5b6470">weights / artifacts</text>
+  <!-- host -> bedrock endpoint -> bedrock -->
+  <path d="M400,498 H525 V522" fill="none" stroke="#5b6470" stroke-width="1.5" marker-end="url(#aa)"/>
+  <path d="M614,498 H660 V397 H690" fill="none" stroke="#5b6470" stroke-width="1.5" marker-end="url(#aa)"/>
+  <text x="628" y="470" font-size="10" fill="#5b6470">reward gen</text>
+  <!-- NAT -> internet -->
+  <path d="M234,280 H320 V498 H690" fill="none" stroke="#5b6470" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#aa)"/>
+  <text x="332" y="492" font-size="10" fill="#5b6470">egress</text>
+</svg>

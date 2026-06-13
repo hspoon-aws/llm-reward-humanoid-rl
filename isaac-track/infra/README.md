@@ -5,6 +5,8 @@ capacity-block instance that runs the humanoid LLM→RL sprint. Synthesizes a
 launch template you fire at **21:30** (inside the capacity-block window) plus the
 VPC, endpoints, security group, and least-privilege role it depends on.
 
+![AWS architecture: a no-public-IP GPU host in a private subnet runs the LLM-to-reward-to-RL loop, reaching S3 for weights and artifacts and Amazon Bedrock for reward generation, with operator access only through SSM Session Manager and egress via NAT plus VPC endpoints.](../../blog/assets/aws-architecture.svg)
+
 ## What it builds
 
 | Resource | Purpose | Req |
