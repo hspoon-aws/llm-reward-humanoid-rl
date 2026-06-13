@@ -185,6 +185,11 @@
   <p class="dek">A 24-hour experiment in LLM-written reward functions.</p>
 </header>
 
+<figure class="figure media">
+  <video src="assets/isaac-best/best_policy_chase.mp4" autoplay loop muted playsinline></video>
+  <figcaption>A Unitree H1 humanoid walking to a goal under a reward function written entirely by an LLM — no human hand-tuned the reward math.</figcaption>
+</figure>
+
 <h2>The question that started it</h2>
 
 <p>My wife asked me a fair question over dinner: <em>"Why can't we just buy a home robot and tell it to do the laundry?"</em></p>
@@ -291,8 +296,8 @@
 <p>Here's what "a sentence became a gait" actually looks like: a policy trained entirely on an LLM-written reward, no hand-tuned reward math anywhere in the loop.</p>
 
 <figure class="figure media">
-  <video src="assets/isaac-best/best_policy_chase.mp4" autoplay loop muted playsinline controls width="640"></video>
-  <figcaption>The H1 humanoid walking under an LLM-authored reward, upright and moving toward the goal. The behaviour came from an English task description, not hand-written reward terms.</figcaption>
+  <video src="assets/isaac-best/best_policy_side.mp4" autoplay loop muted playsinline controls width="640"></video>
+  <figcaption>The H1 humanoid walking under an LLM-authored reward, upright and moving toward the goal (side view). The behaviour came from an English task description, not hand-written reward terms.</figcaption>
 </figure>
 
 <p>Getting there took several rounds, each fixing the failure mode the last one exposed. Every step forward came from a <em>scaffolding</em> change, not a smarter model:</p>

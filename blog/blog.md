@@ -2,6 +2,8 @@
 
 *A 24-hour experiment in LLM-written reward functions.*
 
+*[Cover video: a Unitree H1 humanoid walking to a goal under an LLM-written reward — [watch it here](https://hspoon-aws.github.io/llm-reward-humanoid-rl/blog/blog.html).]*
+
 ## The question that started it
 
 My wife asked me a fair question over dinner: *"Why can't we just buy a home robot and tell it to do the laundry?"*
