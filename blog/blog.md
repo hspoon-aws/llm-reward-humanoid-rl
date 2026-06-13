@@ -2,7 +2,7 @@
 
 *A 24-hour experiment in LLM-written reward functions.*
 
-*[Cover video: a Unitree H1 humanoid walking to a goal under an LLM-written reward — [watch it here](https://hspoon-aws.github.io/llm-reward-humanoid-rl/blog/blog.html).]*
+![A humanoid robot learning to walk to a goal under a reward function written by an LLM](assets/cover-image.jpg)
 
 ## The question that started it
 
