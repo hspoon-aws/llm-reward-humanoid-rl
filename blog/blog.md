@@ -138,3 +138,5 @@ If it ever does land in my living room, I have one modest hope: that it listens 
 ---
 
 *Built over a single 24-hour GPU reservation: a Unitree H1 humanoid, an Eureka-style LLM→reward→RL loop, on both NVIDIA Isaac Lab (PyTorch/RSL-RL) and MuJoCo MJX (JAX/Brax). Reward functions written by Qwen3-Coder-30B and Claude Opus 4.8. All failures my own.*
+
+*Code and full engineering lessons: [github.com/hspoon-aws/llm-reward-humanoid-rl](https://github.com/hspoon-aws/llm-reward-humanoid-rl).*
