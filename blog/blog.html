@@ -202,78 +202,7 @@
 <p>That hand-tuning has been on my wishlist to automate for years, because it's so obviously a job for a language model: <em>what if the LLM writes the reward, reads the results, and refines it, and I just describe what I want?</em> That's the <strong>Eureka loop</strong> (<a href="https://arxiv.org/abs/2310.12931" target="_blank" rel="noopener">2023 paper</a>):</p>
 
 <figure class="figure">
-<svg viewBox="0 0 760 300" width="100%" role="img" aria-label="The Eureka loop: humanoid environment and task description feed an LLM that writes reward functions, trained by DRL, with results fed back to refine the reward">
-  <defs>
-    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#5b6470"/>
-    </marker>
-    <marker id="arc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#0b6e4f"/>
-    </marker>
-  </defs>
-  <style>
-    .ebox { rx: 9; ry: 9; stroke-width: 1.5; }
-    .etext { font: 600 13px -apple-system, sans-serif; fill: #fff; }
-    .etext-d { font: 600 13px -apple-system, sans-serif; fill: #1a1a1a; }
-    .eflow { stroke: #5b6470; stroke-width: 1.6; fill: none; }
-    .elbl { font: 11px -apple-system, sans-serif; fill: #5b6470; }
-  </style>
-
-  <!-- inputs (left) -->
-  <rect class="ebox" x="14" y="48" width="150" height="58" fill="#1f9d6b" stroke="#178055"/>
-  <text class="etext" x="89" y="72" text-anchor="middle">Unitree H1</text>
-  <text class="etext" x="89" y="90" text-anchor="middle">environment</text>
-
-  <rect class="ebox" x="14" y="150" width="150" height="58" fill="#2aa9e0" stroke="#1d8cbf"/>
-  <text class="etext" x="89" y="174" text-anchor="middle">Task in plain</text>
-  <text class="etext" x="89" y="192" text-anchor="middle">English</text>
-
-  <!-- combine symbol -->
-  <circle cx="196" cy="128" r="13" fill="#fff" stroke="#5b6470" stroke-width="1.5"/>
-  <line x1="187" y1="119" x2="205" y2="137" stroke="#5b6470" stroke-width="1.5"/>
-  <line x1="205" y1="119" x2="187" y2="137" stroke="#5b6470" stroke-width="1.5"/>
-  <path class="eflow" d="M164,77 H196 V116" marker-end="url(#ar)"/>
-  <path class="eflow" d="M164,179 H196 V141" marker-end="url(#ar)"/>
-
-  <!-- dashed loop container -->
-  <rect x="234" y="16" width="512" height="268" rx="14" fill="none" stroke="#1d8cbf" stroke-width="1.6" stroke-dasharray="6 5"/>
-  <path class="eflow" d="M209,128 H234" marker-end="url(#ar)"/>
-
-  <!-- LLM box -->
-  <rect class="ebox" x="268" y="52" width="170" height="60" fill="#c879d6" stroke="#a857b8"/>
-  <text class="etext" x="353" y="78" text-anchor="middle">LLM writes</text>
-  <text class="etext" x="353" y="96" text-anchor="middle">reward code</text>
-
-  <!-- Reward box -->
-  <rect class="ebox" x="556" y="52" width="170" height="60" fill="#f0a868" stroke="#d98324"/>
-  <text class="etext-d" x="641" y="78" text-anchor="middle">Reward</text>
-  <text class="etext-d" x="641" y="96" text-anchor="middle">function</text>
-
-  <!-- RL/PPO training box -->
-  <rect class="ebox" x="556" y="196" width="170" height="60" fill="#3a4250" stroke="#2a313c"/>
-  <text class="etext" x="641" y="222" text-anchor="middle">RL training</text>
-  <text class="etext" x="641" y="240" text-anchor="middle">(PPO policy)</text>
-
-  <!-- Feedback box -->
-  <rect class="ebox" x="268" y="196" width="170" height="60" fill="#aeb6bf" stroke="#8b939c"/>
-  <text class="etext-d" x="353" y="222" text-anchor="middle">Feedback:</text>
-  <text class="etext-d" x="353" y="240" text-anchor="middle">metrics + video</text>
-
-  <!-- central refine arrows (circular) -->
-  <path d="M470,168 A40 40 0 0 1 470,108" class="eflow" stroke="#0b6e4f" stroke-width="2.4" marker-end="url(#arc)"/>
-  <path d="M524,108 A40 40 0 0 1 524,168" class="eflow" stroke="#0b6e4f" stroke-width="2.4" marker-end="url(#arc)"/>
-  <text class="elbl" x="497" y="143" text-anchor="middle" fill="#0b6e4f">refine</text>
-
-  <!-- flow arrows around the loop -->
-  <path class="eflow" d="M438,82 H556" marker-end="url(#ar)"/>           <!-- LLM -> reward -->
-  <text class="elbl" x="497" y="74" text-anchor="middle">writes</text>
-  <path class="eflow" d="M641,112 V196" marker-end="url(#ar)"/>          <!-- reward -> training -->
-  <text class="elbl" x="664" y="156">trains</text>
-  <path class="eflow" d="M556,226 H438" marker-end="url(#ar)"/>          <!-- training -> feedback -->
-  <text class="elbl" x="497" y="218" text-anchor="middle">scores</text>
-  <path class="eflow" d="M353,196 V112" marker-end="url(#ar)"/>          <!-- feedback -> LLM -->
-  <text class="elbl" x="330" y="156" text-anchor="end">feeds back</text>
-</svg>
+<img src="assets/eureka-loop.svg" width="100%" alt="The Eureka loop: humanoid environment and task description feed an LLM that writes reward functions, trained by DRL, with results fed back to refine the reward"/>
 <figcaption>The Eureka loop: the robot environment and a plain-English task combine to prompt an LLM, which writes a reward function; PPO trains a policy on it; metrics and video feed back so the model refines the reward, and round again.</figcaption>
 </figure>
 

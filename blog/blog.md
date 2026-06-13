@@ -18,17 +18,7 @@ If you've used AWS DeepRacer, you already understand 80% of this. You teach a ca
 
 That hand-tuning has been on my wishlist to automate for years, because it's so obviously a job for a language model: *what if the LLM writes the reward, reads the results, and refines it, and I just describe what I want?* That's the **Eureka loop** ([2023 paper](https://arxiv.org/abs/2310.12931)):
 
-```
-English task description
-        │
-        ▼
-   ┌─────────┐   reward code   ┌──────────┐   policy   ┌────────────┐
-   │   LLM   │ ──────────────▶ │  RL/PPO  │ ─────────▶ │ Evaluation │
-   └─────────┘                 └──────────┘            └────────────┘
-        ▲                                                    │
-        │                metrics + behaviour                 │
-        └────────────────────────────────────────────────────┘
-```
+![The Eureka loop: the robot environment and a plain-English task combine to prompt an LLM, which writes a reward function; PPO trains a policy on it; metrics and video feed back so the model refines the reward, and round again.](assets/eureka-loop.svg)
 
 The LLM writes the same `compute_reward(...)` you'd hand-write for DeepRacer, except the author is an AI code model and the loop is automated. The payoff: **the control surface becomes a sentence.** Change *"walk to the goal"* to *"stand up and steady yourself, turn to face the goal, walk toward it with smooth even strides staying upright, then slow down and stop balanced on arrival"* and the gait changes, with no human editing reward math.
 

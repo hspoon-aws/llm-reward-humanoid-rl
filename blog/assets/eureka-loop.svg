@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" width="760" height="300" role="img" aria-label="The Eureka loop: humanoid environment and task description feed an LLM that writes reward functions, trained by DRL, with results fed back to refine the reward">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6470"/>
+    </marker>
+    <marker id="arc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0b6e4f"/>
+    </marker>
+  </defs>
+
+  <rect width="760" height="300" fill="#ffffff"/>
+
+  <!-- inputs (left) -->
+  <rect x="14" y="48" width="150" height="58" rx="9" ry="9" stroke-width="1.5" fill="#1f9d6b" stroke="#178055"/>
+  <text x="89" y="72" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="13" font-weight="600" fill="#ffffff">Unitree H1</text>
+  <text x="89" y="90" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="13" font-weight="600" fill="#ffffff">environment</text>
+
+  <rect x="14" y="150" width="150" height="58" rx="9" ry="9" stroke-width="1.5" fill="#2aa9e0" stroke="#1d8cbf"/>
+  <text x="89" y="174" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="13" font-weight="600" fill="#ffffff">Task in plain</text>
+  <text x="89" y="192" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="13" font-weight="600" fill="#ffffff">English</text>
+
+  <!-- combine symbol -->
+  <circle cx="196" cy="128" r="13" fill="#fff" stroke="#5b6470" stroke-width="1.5"/>
+  <line x1="187" y1="119" x2="205" y2="137" stroke="#5b6470" stroke-width="1.5"/>
+  <line x1="205" y1="119" x2="187" y2="137" stroke="#5b6470" stroke-width="1.5"/>
+  <path d="M164,77 H196 V116" fill="none" stroke="#5b6470" stroke-width="1.6" marker-end="url(#ar)"/>
+  <path d="M164,179 H196 V141" fill="none" stroke="#5b6470" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <!-- dashed loop container -->
+  <rect x="234" y="16" width="512" height="268" rx="14" fill="none" stroke="#1d8cbf" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <path d="M209,128 H234" fill="none" stroke="#5b6470" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <!-- LLM box -->
+  <rect x="268" y="52" width="170" height="60" rx="9" ry="9" stroke-width="1.5" fill="#c879d6" stroke="#a857b8"/>
+  <text x="353" y="78" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="13" font-weight="600" fill="#ffffff">LLM writes</text>
+  <text x="353" y="96" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="13" font-weight="600" fill="#ffffff">reward code</text>
+
+  <!-- Reward box -->
+  <rect x="556" y="52" width="170" height="60" rx="9" ry="9" stroke-width="1.5" fill="#f0a868" stroke="#d98324"/>
+  <text x="641" y="78" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="13" font-weight="600" fill="#1a1a1a">Reward</text>
+  <text x="641" y="96" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="13" font-weight="600" fill="#1a1a1a">function</text>
+
+  <!-- RL/PPO training box -->
+  <rect x="556" y="196" width="170" height="60" rx="9" ry="9" stroke-width="1.5" fill="#3a4250" stroke="#2a313c"/>
+  <text x="641" y="222" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="13" font-weight="600" fill="#ffffff">RL training</text>
+  <text x="641" y="240" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="13" font-weight="600" fill="#ffffff">(PPO policy)</text>
+
+  <!-- Feedback box -->
+  <rect x="268" y="196" width="170" height="60" rx="9" ry="9" stroke-width="1.5" fill="#aeb6bf" stroke="#8b939c"/>
+  <text x="353" y="222" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="13" font-weight="600" fill="#1a1a1a">Feedback:</text>
+  <text x="353" y="240" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="13" font-weight="600" fill="#1a1a1a">metrics + video</text>
+
+  <!-- central refine arrows (circular) -->
+  <path d="M470,168 A40 40 0 0 1 470,108" fill="none" stroke="#0b6e4f" stroke-width="2.4" marker-end="url(#arc)"/>
+  <path d="M524,108 A40 40 0 0 1 524,168" fill="none" stroke="#0b6e4f" stroke-width="2.4" marker-end="url(#arc)"/>
+  <text x="497" y="143" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="11" fill="#0b6e4f">refine</text>
+
+  <!-- flow arrows around the loop -->
+  <path d="M438,82 H556" fill="none" stroke="#5b6470" stroke-width="1.6" marker-end="url(#ar)"/>
+  <text x="497" y="74" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="11" fill="#5b6470">writes</text>
+  <path d="M641,112 V196" fill="none" stroke="#5b6470" stroke-width="1.6" marker-end="url(#ar)"/>
+  <text x="664" y="156" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="11" fill="#5b6470">trains</text>
+  <path d="M556,226 H438" fill="none" stroke="#5b6470" stroke-width="1.6" marker-end="url(#ar)"/>
+  <text x="497" y="218" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="11" fill="#5b6470">scores</text>
+  <path d="M353,196 V112" fill="none" stroke="#5b6470" stroke-width="1.6" marker-end="url(#ar)"/>
+  <text x="330" y="156" text-anchor="end" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="11" fill="#5b6470">feeds back</text>
+</svg>

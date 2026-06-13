@@ -14,8 +14,9 @@ description.
 
 Read the write-up first, it's the point of this repo:
 
-- **[blog/blog.md](blog/blog.md)** — the full article (also as a styled
-  [blog.html](blog/blog.html) with embedded demo videos and diagrams).
+- **[Read the article online](https://hspoon-aws.github.io/llm-reward-humanoid-rl/blog/blog.html)** — the styled version with embedded demo videos and diagrams (best experience).
+- **[blog/blog.md](blog/blog.md)** — the same article as Markdown (also as raw
+  [blog.html](blog/blog.html)).
 
 ## What's here
 
@@ -32,15 +33,7 @@ Isaac-vs-MuJoCo comparison. See each track's `README.md`.
 
 ## How the loop works
 
-```
-English task description
-        |
-        v
-   [ LLM ] --reward code--> [ RL / PPO ] --policy--> [ Evaluation ]
-        ^                                                  |
-        |              metrics + behaviour                 |
-        +--------------------------------------------------+
-```
+![The Eureka loop: the Unitree H1 environment and a plain-English task combine to prompt an LLM, which writes a reward function; PPO trains a policy on it; metrics and video feed back so the model refines the reward, and round again.](blog/assets/eureka-loop.svg)
 
 The LLM writes a `compute_reward(...)` function; PPO trains a policy with it; an
 evaluator scores the result on metrics the LLM didn't choose; those metrics feed
